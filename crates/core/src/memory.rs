@@ -601,6 +601,17 @@ impl PtyService for InMemoryPtyService {
             None
         }
     }
+
+    fn attach_stdio(&self, id: &str) -> Option<PtyStdio> {
+        let mut processes = self.processes.lock().unwrap();
+        if let Some(p) = processes.get_mut(id) {
+            let stdin = p.stdin.take()?;
+            let stdout = p.stdout.take()?;
+            Some(PtyStdio { stdin, stdout })
+        } else {
+            None
+        }
+    }
 }
 
 // ---- InMemoryPermissionService ----
