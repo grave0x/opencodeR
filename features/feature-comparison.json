@@ -1,0 +1,271 @@
+{
+  "meta": {
+    "date": "2026-07-22",
+    "original": "opencode (Go/TypeScript) v1.18.4",
+    "port": "opencodeR (Rust)",
+    "description": "Feature comparison between original opencode and the Rust opencodeR port"
+  },
+  "cli_commands": {
+    "opencode [project]": {
+      "original": "Start opencode TUI (default, interactive agent)",
+      "opencodeR": "opencodeR (default) — basic stdin REPL, no proper TUI yet",
+      "status": "partial",
+      "notes": "REPL loop works but missing: rich TUI, project attachment, agent switching in-session"
+    },
+    "opencode serve": {
+      "original": "Start headless HTTP server",
+      "opencodeR": "opencodeR-server --headless <port> or opencodeR server <port>",
+      "status": "complete",
+      "notes": "Full implementation with TUI dashboard option"
+    },
+    "opencode attach <url>": {
+      "original": "Attach to a running opencode server via URL",
+      "opencodeR": "opencodeR-client --base-url <url>",
+      "status": "partial",
+      "notes": "Basic REPL works. Missing: session history replay, message viewing, TUI attach mode"
+    },
+    "opencode run <message>": {
+      "original": "Run one-shot prompt, output response, exit",
+      "opencodeR": "opencodeR run <msg> --port <port>",
+      "status": "partial",
+      "notes": "Sends prompt, returns admitted ID. Missing: actual LLM response, streaming output"
+    },
+    "opencode completion": {
+      "original": "Generate shell completion script",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode models [provider]": {
+      "original": "List available models, optionally filtered by provider",
+      "opencodeR": "N/A (server API provides GET /api/model, GET /api/provider)",
+      "status": "api_only",
+      "notes": "Server endpoints exist. No CLI subcommand to list them standalone."
+    },
+    "opencode providers": {
+      "original": "Manage AI providers and credentials (list, login, logout)",
+      "opencodeR": "NOT IMPLEMENTED as CLI",
+      "status": "api_only",
+      "notes": "Server has GET /api/provider, PATCH /api/credential. No CLI subcommand."
+    },
+    "opencode agent": {
+      "original": "Manage agents (create, list)",
+      "opencodeR": "NOT IMPLEMENTED as CLI",
+      "status": "api_only",
+      "notes": "Server has GET /api/agent. No agent create or CLI management."
+    },
+    "opencode session": {
+      "original": "Manage sessions (list, delete)",
+      "opencodeR": "NOT IMPLEMENTED as CLI",
+      "status": "partial",
+      "notes": "Server has full session API. Client creates session on connect. No list/delete CLI."
+    },
+    "opencode export [sessionID]": {
+      "original": "Export session data as JSON",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode import <file>": {
+      "original": "Import session data from JSON file or URL",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode stats": {
+      "original": "Show token usage and cost statistics",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode upgrade": {
+      "original": "Upgrade opencode to latest version",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode uninstall": {
+      "original": "Uninstall opencode and remove all related files",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode web": {
+      "original": "Start server and open web interface",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode debug": {
+      "original": "Debugging and troubleshooting tools",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode github": {
+      "original": "Manage GitHub agent (PR, issues, etc.)",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode pr <number>": {
+      "original": "Fetch PR branch and run opencode on it",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode plugin <module>": {
+      "original": "Install plugin and update config",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode mcp": {
+      "original": "Manage MCP (Model Context Protocol) servers",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode acp": {
+      "original": "Start ACP (Agent Client Protocol) server",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    },
+    "opencode db": {
+      "original": "Database tools (migrations, management)",
+      "opencodeR": "NOT IMPLEMENTED",
+      "status": "missing"
+    }
+  },
+  "server_api": {
+    "sessions": {
+      "original": "Full CRUD + prompt, events, history, revert, interrupt, messages, context",
+      "opencodeR": "All endpoints implemented with in-memory store",
+      "status": "complete",
+      "notes": "Missing: database persistence, agent/model switching in-prompt"
+    },
+    "agents": {
+      "original": "List, create agents",
+      "opencodeR": "GET /api/agent returns hardcoded build + plan agents",
+      "status": "partial",
+      "notes": "Missing: agent creation, agent config from filesystem"
+    },
+    "models": {
+      "original": "List models, model metadata with limits + costs",
+      "opencodeR": "GET /api/model returns hardcoded model list",
+      "status": "partial",
+      "notes": "Missing: provider-backed model discovery, model limits enforcement"
+    },
+    "providers": {
+      "original": "List, get, OAuth flow, API key management",
+      "opencodeR": "GET /api/provider returns hardcoded list. Connect endpoints exist but are stubs.",
+      "status": "partial"
+    },
+    "filesystem": {
+      "original": "Read files, list directories, find files by pattern",
+      "opencodeR": "Read, list, find all work with real filesystem access",
+      "status": "complete"
+    },
+    "integrations": {
+      "original": "GitHub, GitLab, custom integrations with OAuth flow",
+      "opencodeR": "Integration endpoints exist with in-memory stubs. No real OAuth.",
+      "status": "partial"
+    },
+    "credentials": {
+      "original": "Update, remove credentials per provider",
+      "opencodeR": "PATCH /api/credential implemented (in-memory)",
+      "status": "partial"
+    },
+    "permissions": {
+      "original": "Request/reply permission flow with saved rules",
+      "opencodeR": "All permission endpoints implemented (in-memory)",
+      "status": "complete"
+    },
+    "questions": {
+      "original": "Ask/reply/reject questions from agent",
+      "opencodeR": "All question endpoints implemented (in-memory)",
+      "status": "complete"
+    },
+    "commands": {
+      "original": "List available shell commands",
+      "opencodeR": "GET /api/command returns hardcoded list",
+      "status": "partial"
+    },
+    "skills": {
+      "original": "List available skills from filesystem",
+      "opencodeR": "GET /api/skill returns hardcoded list",
+      "status": "partial"
+    },
+    "references": {
+      "original": "List file/symbol/web references",
+      "opencodeR": "GET /api/reference returns empty list",
+      "status": "partial"
+    },
+    "pty": {
+      "original": "Create, list, resize PTY sessions + WebSocket connect for I/O",
+      "opencodeR": "CRUD endpoints work. WebSocket connect implemented but no real PTY process.",
+      "status": "partial"
+    },
+    "events": {
+      "original": "SSE stream of server events (connected, heartbeat, session events)",
+      "opencodeR": "SSE endpoint streams connected event + heartbeats. No session events pushed live.",
+      "status": "partial"
+    },
+    "auth": {
+      "original": "Password-based Basic auth with config layer",
+      "opencodeR": "Basic auth middleware with pre-computed credential comparison",
+      "status": "complete"
+    },
+    "health": {
+      "original": "GET /api/health",
+      "opencodeR": "Returns {\"healthy\": true}",
+      "status": "complete"
+    }
+  },
+  "opencodeR_client_features": {
+    "interactive_repl": {
+      "status": "partial",
+      "notes": "Stdin loop works. Missing: multi-line input, command history, tab completion"
+    },
+    "one_shot_mode": {
+      "status": "complete",
+      "notes": "--one-shot flag sends prompt and prints response"
+    },
+    "session_list": {
+      "status": "missing",
+      "notes": "No way to list sessions from client"
+    },
+    "session_delete": {
+      "status": "missing",
+      "notes": "Server has no delete endpoint"
+    },
+    "message_history": {
+      "status": "partial",
+      "notes": "Shows messages on connect. No pagination or formatting."
+    },
+    "export_session": {
+      "status": "missing",
+      "notes": "No export command"
+    },
+    "model_listing": {
+      "status": "missing",
+      "notes": "No models CLI subcommand"
+    },
+    "provider_management": {
+      "status": "missing",
+      "notes": "No providers CLI subcommand"
+    },
+    "agent_management": {
+      "status": "missing",
+      "notes": "No agent CLI subcommand"
+    }
+  },
+  "prioritized_backlog": [
+    {"priority": 1, "item": "CLI: session list + delete subcommand", "area": "opencodeR-client"},
+    {"priority": 2, "item": "CLI: models list subcommand", "area": "opencodeR-client"},
+    {"priority": 3, "item": "CLI: providers list subcommand", "area": "opencodeR-client"},
+    {"priority": 4, "item": "CLI: agents list subcommand", "area": "opencodeR-client"},
+    {"priority": 5, "item": "CLI: export session as JSON", "area": "opencodeR-client"},
+    {"priority": 6, "item": "CLI: shell completion generation", "area": "opencodeR"},
+    {"priority": 7, "item": "Server: LLM provider integration for actual prompt responses", "area": "opencodeR-server"},
+    {"priority": 8, "item": "Server: real PTY process creation (fork+exec)", "area": "opencodeR-server"},
+    {"priority": 9, "item": "Server: live session events via SSE stream", "area": "opencodeR-server"},
+    {"priority": 10, "item": "Server: database persistence (SQLite)", "area": "opencodeR-server"},
+    {"priority": 11, "item": "CLI: stats/token usage", "area": "opencodeR-client"},
+    {"priority": 12, "item": "CLI: import session from JSON", "area": "opencodeR-client"},
+    {"priority": 13, "item": "Server: real integration OAuth flow", "area": "opencodeR-server"},
+    {"priority": 14, "item": "CLI: plugin management", "area": "opencodeR"},
+    {"priority": 15, "item": "CLI: MCP server management", "area": "opencodeR"},
+    {"priority": 16, "item": "CLI: GitHub/PR integration", "area": "opencodeR"},
+    {"priority": 17, "item": "CLI: self-upgrade + uninstall", "area": "opencodeR"},
+    {"priority": 18, "item": "Server: web interface (opencode web)", "area": "opencodeR-server"}
+  ]
+}
