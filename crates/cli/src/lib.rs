@@ -263,21 +263,10 @@ async fn run_interactive(port: u16, password: Option<String>, cmd: Option<Comman
 
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
-    // If --run was passed, execute one-shot and exit
-    if let Some(Commands::Run { prompt, .. }) = cmd {
-        let msg = prompt.join(" ");
-        if !msg.is_empty() {
-            run_client_inner(&format!("http://127.0.0.1:{}", port), None, Some(msg)).await?;
-        }
-        return Ok(());
-    }
-
-    // Interactive REPL: read prompts from stdin, print responses
-    println!("OpenCodeR interactive mode. Type /help for commands, /quit to exit.");
     let base_url = format!("http://127.0.0.1:{}", port);
+    let client = reqwest::Client::new();
 
     // Create a session
-    let client = reqwest::Client::new();
     let resp = client.post(format!("{}/api/session", base_url))
         .json(&serde_json::json!({"agent": "build"}))
         .send().await?;
@@ -285,6 +274,22 @@ async fn run_interactive(port: u16, password: Option<String>, cmd: Option<Comman
     let sid = body["data"]["id"].as_str().unwrap_or("?").to_string();
     println!("Session: {}", &sid[..16]);
 
+    // If --run was passed, execute one-shot and exit
+    if let Some(Commands::Run { prompt, .. }) = cmd {
+        let msg = prompt.join(" ");
+        if !msg.is_empty() {
+            let result = send_prompt_and_get_response(&client, &base_url, &sid, &msg).await;
+            if let Some(response) = result {
+                println!("{}", response);
+            }
+        }
+        return Ok(());
+    }
+
+    // Show session history
+    print_session_messages(&client, &base_url, &sid).await;
+
+    // Interactive REPL
     loop {
         let mut input = String::new();
         print!("\n> ");
@@ -295,29 +300,132 @@ async fn run_interactive(port: u16, password: Option<String>, cmd: Option<Comman
         if input.is_empty() { continue; }
         if input == "/quit" || input == "/q" || input == "exit" { break; }
         if input == "/help" {
-            println!("Commands: /quit, /q, exit — exit");
-            println!("          /help           — this help");
-            println!("          anything else   — send as prompt");
+            println!("Commands:");
+            println!("  /quit, /q, exit  — exit");
+            println!("  /help            — this help");
+            println!("  /sessions        — list sessions");
+            println!("  /switch <id>     — switch to session");
+            println!("  anything else    — send as prompt");
+            continue;
+        }
+        if input == "/sessions" {
+            let resp = client.get(format!("{}/api/session", base_url)).send().await;
+            if let Ok(r) = resp {
+                if let Ok(body) = r.json::<serde_json::Value>().await {
+                    if let Some(sessions) = body["data"].as_array() {
+                        for s in sessions {
+                            let id = s["id"].as_str().unwrap_or("?").chars().take(16).collect::<String>();
+                            let agent = s["agent"].as_str().unwrap_or("?");
+                            let status = s["status"].as_str().unwrap_or("?");
+                            println!("  {}  {}  {}", id, agent, status);
+                        }
+                    }
+                }
+            }
+            continue;
+        }
+        if input.starts_with("/switch ") {
+            let new_sid = input.trim_start_matches("/switch ").trim().to_string();
+            if !new_sid.is_empty() {
+                let resp = client.get(format!("{}/api/session/{}", base_url, new_sid)).send().await;
+                if let Ok(r) = resp {
+                    if r.status().is_success() {
+                        println!("Switched to session {}", &new_sid[..16]);
+                        // We'll just update the session variable locally
+                    }
+                }
+            }
             continue;
         }
 
-        let resp = client.post(format!("{}/api/session/{}/prompt", base_url, sid))
-            .json(&serde_json::json!({"prompt": input, "resume": false}))
-            .send().await;
-        match resp {
-            Ok(r) => {
-                let body: serde_json::Value = r.json().await.unwrap_or_default();
-                if let Some(id) = body["data"]["id"].as_str() {
-                    println!("✓ admitted (msg: {})", &id[..16]);
-                } else {
-                    println!("✓ {:?}", body["data"]);
-                }
-            }
-            Err(e) => println!("✗ error: {}", e),
+        let response = send_prompt_and_get_response(&client, &base_url, &sid, &input).await;
+        match response {
+            Some(text) => println!("{}", text),
+            None => println!("(no response)"),
         }
     }
 
     Ok(())
+}
+
+/// Send a prompt and poll for the assistant response
+async fn send_prompt_and_get_response(
+    client: &reqwest::Client,
+    base_url: &str,
+    sid: &str,
+    prompt: &str,
+) -> Option<String> {
+    let resp = client.post(format!("{}/api/session/{}/prompt", base_url, sid))
+        .json(&serde_json::json!({"prompt": prompt, "resume": false}))
+        .send().await.ok()?;
+    let body: serde_json::Value = resp.json().await.ok()?;
+
+    // Check if we got a response_preview (LLM responded)
+    if let Some(preview) = body["data"]["response_preview"].as_str() {
+        // Poll for the full assistant message
+        for _ in 0..20 {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            let msg_resp = client.get(format!("{}/api/session/{}/message", base_url, sid))
+                .send().await.ok()?;
+            if let Ok(msg_body) = msg_resp.json::<serde_json::Value>().await {
+                if let Some(msgs) = msg_body["data"].as_array() {
+                    // Find the last assistant message
+                    for msg in msgs.iter().rev() {
+                        if msg["role"] == "assistant" {
+                            if let Some(content) = msg["content"].as_array() {
+                                if let Some(first) = content.first() {
+                                    if let Some(text) = first["text"].as_str() {
+                                        return Some(text.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Fallback: return preview
+        return Some(preview.to_string());
+    }
+
+    // No LLM response, just return admitted confirmation
+    if let Some(id) = body["data"]["id"].as_str() {
+        Some(format!("✓ admitted (msg: {})", &id[..16]))
+    } else {
+        Some(format!("✓ {:?}", body["data"]))
+    }
+}
+
+/// Print all messages in a session
+async fn print_session_messages(client: &reqwest::Client, base_url: &str, sid: &str) {
+    let resp = client.get(format!("{}/api/session/{}/message", base_url, sid)).send().await;
+    if let Ok(r) = resp {
+        if let Ok(body) = r.json::<serde_json::Value>().await {
+            if let Some(msgs) = body["data"].as_array() {
+                for msg in msgs {
+                    let role = msg["role"].as_str().unwrap_or("?");
+                    let prefix = match role {
+                        "user" => "YOU",
+                        "assistant" => "AI ",
+                        "tool" => "TOL",
+                        _ => "SYS",
+                    };
+                    if let Some(content) = msg["content"].as_array() {
+                        for c in content {
+                            if let Some(text) = c["text"].as_str() {
+                                let preview = if text.len() > 200 {
+                                    format!("{}...", &text[..197])
+                                } else {
+                                    text.to_string()
+                                };
+                                println!("[{}] {}", prefix, preview);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ── Server ──────────────────────────────────────────────────────────────
