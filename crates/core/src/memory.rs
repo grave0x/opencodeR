@@ -314,6 +314,18 @@ impl SessionService for InMemorySessionService {
         Ok(())
     }
 
+    fn delete(&self, session_id: &SessionID) -> Result<(), ()> {
+        let mut store = self.inner.lock().unwrap();
+        if store.sessions.remove(session_id).is_some() {
+            store.messages.remove(session_id);
+            store.events.remove(session_id);
+            info!(target: "opencode_r_core::session", session_id = %session_id.0, "session_deleted");
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     fn wait(&self, session_id: &SessionID) -> Result<(), String> {
         let store = self.inner.lock().unwrap();
         if store.sessions.contains_key(session_id) { Ok(()) } else { Err("Session not found".into()) }

@@ -184,6 +184,17 @@ pub async fn get(
     }
 }
 
+pub async fn delete_session(
+    State(state): State<SharedState>,
+    Path(session_id): Path<SessionID>,
+) -> Result<Json<NoContent>, (StatusCode, Json<SessionNotFoundError>)> {
+    let sid = session_id.0.clone();
+    state.session.delete(&session_id).map(|_| Json(NoContent)).map_err(|_| (
+        StatusCode::NOT_FOUND,
+        Json(SessionNotFoundError { session_id: sid, message: format!("Session not found: {}", session_id.0) }),
+    ))
+}
+
 pub async fn switch_agent(
     State(state): State<SharedState>,
     Path(session_id): Path<SessionID>,

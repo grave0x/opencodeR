@@ -108,6 +108,7 @@ pub trait SessionService: Send + Sync {
     fn switch_model(&self, session_id: &SessionID, model: &str) -> Result<(), ()>;
     fn prompt(&self, session_id: &SessionID, input: SessionPromptInput) -> Result<String, String>;
     fn compact(&self, session_id: &SessionID) -> Result<(), String>;
+    fn delete(&self, session_id: &SessionID) -> Result<(), ()>;
     fn wait(&self, session_id: &SessionID) -> Result<(), String>;
     fn revert_stage(&self, session_id: &SessionID, input: SessionRevertStageInput) -> Result<RevertState, String>;
     fn revert_clear(&self, session_id: &SessionID) -> Result<(), String>;

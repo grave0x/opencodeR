@@ -28,7 +28,7 @@ pub fn build_router(state: SharedState) -> Router {
             get(handler::session::list).post(handler::session::create),
         )
         .route(route::SESSION_ACTIVE_PATTERN, get(handler::session::active))
-        .route(route::SESSION_GET_PATTERN, get(handler::session::get))
+        .route(route::SESSION_GET_PATTERN, get(handler::session::get).delete(handler::session::delete_session))
         .route(route::SESSION_SWITCH_AGENT_PATTERN, post(handler::session::switch_agent))
         .route(route::SESSION_SWITCH_MODEL_PATTERN, post(handler::session::switch_model))
         .route(route::SESSION_PROMPT_PATTERN, post(handler::session::prompt))

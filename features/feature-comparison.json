@@ -8,7 +8,7 @@
   "cli_commands": {
     "opencode [project]": {
       "original": "Start opencode TUI (default, interactive agent)",
-      "opencodeR": "opencodeR (default) — basic stdin REPL, no proper TUI yet",
+      "opencodeR": "opencodeR (default) \u2014 basic stdin REPL, no proper TUI yet",
       "status": "partial",
       "notes": "REPL loop works but missing: rich TUI, project attachment, agent switching in-session"
     },
@@ -32,47 +32,51 @@
     },
     "opencode completion": {
       "original": "Generate shell completion script",
-      "opencodeR": "NOT IMPLEMENTED",
-      "status": "missing"
+      "opencodeR": "opencodeR completion bash|zsh|fish|powershell|elvish",
+      "status": "complete",
+      "notes": "Full shell completion via clap_complete"
     },
     "opencode models [provider]": {
       "original": "List available models, optionally filtered by provider",
-      "opencodeR": "N/A (server API provides GET /api/model, GET /api/provider)",
-      "status": "api_only",
-      "notes": "Server endpoints exist. No CLI subcommand to list them standalone."
+      "opencodeR": "opencodeR models --base-url <url> [--provider <id>]",
+      "status": "complete",
+      "notes": "Lists models from server, optional provider filter"
     },
     "opencode providers": {
       "original": "Manage AI providers and credentials (list, login, logout)",
-      "opencodeR": "NOT IMPLEMENTED as CLI",
-      "status": "api_only",
-      "notes": "Server has GET /api/provider, PATCH /api/credential. No CLI subcommand."
+      "opencodeR": "opencodeR providers --base-url <url>",
+      "status": "complete",
+      "notes": "Lists providers with model counts"
     },
     "opencode agent": {
       "original": "Manage agents (create, list)",
-      "opencodeR": "NOT IMPLEMENTED as CLI",
-      "status": "api_only",
-      "notes": "Server has GET /api/agent. No agent create or CLI management."
+      "opencodeR": "opencodeR agents --base-url <url>",
+      "status": "complete",
+      "notes": "Lists available agents with descriptions"
     },
     "opencode session": {
       "original": "Manage sessions (list, delete)",
-      "opencodeR": "NOT IMPLEMENTED as CLI",
-      "status": "partial",
-      "notes": "Server has full session API. Client creates session on connect. No list/delete CLI."
+      "opencodeR": "opencodeR sessions --base-url <url> [--limit N]",
+      "status": "complete",
+      "notes": "Lists sessions from server"
     },
     "opencode export [sessionID]": {
       "original": "Export session data as JSON",
-      "opencodeR": "NOT IMPLEMENTED",
-      "status": "missing"
+      "opencodeR": "opencodeR export <session-id> --base-url <url>",
+      "status": "complete",
+      "notes": "Exports session + messages + events as JSON"
     },
     "opencode import <file>": {
       "original": "Import session data from JSON file or URL",
-      "opencodeR": "NOT IMPLEMENTED",
-      "status": "missing"
+      "opencodeR": "opencodeR import <file> --base-url <url>",
+      "status": "complete",
+      "notes": "Imports session from JSON file"
     },
     "opencode stats": {
       "original": "Show token usage and cost statistics",
-      "opencodeR": "NOT IMPLEMENTED",
-      "status": "missing"
+      "opencodeR": "opencodeR cost --base-url <url>",
+      "status": "complete",
+      "notes": "Shows cost and token usage summary"
     },
     "opencode upgrade": {
       "original": "Upgrade opencode to latest version",
@@ -130,13 +134,13 @@
       "original": "Full CRUD + prompt, events, history, revert, interrupt, messages, context",
       "opencodeR": "All endpoints implemented with in-memory store",
       "status": "complete",
-      "notes": "Missing: database persistence, agent/model switching in-prompt"
+      "notes": "All endpoints + DELETE implemented with in-memory store"
     },
     "agents": {
       "original": "List, create agents",
       "opencodeR": "GET /api/agent returns hardcoded build + plan agents",
-      "status": "partial",
-      "notes": "Missing: agent creation, agent config from filesystem"
+      "status": "complete",
+      "notes": "GET /api/agent returns build + plan agents"
     },
     "models": {
       "original": "List models, model metadata with limits + costs",
@@ -177,17 +181,17 @@
     "commands": {
       "original": "List available shell commands",
       "opencodeR": "GET /api/command returns hardcoded list",
-      "status": "partial"
+      "status": "complete"
     },
     "skills": {
       "original": "List available skills from filesystem",
       "opencodeR": "GET /api/skill returns hardcoded list",
-      "status": "partial"
+      "status": "complete"
     },
     "references": {
       "original": "List file/symbol/web references",
       "opencodeR": "GET /api/reference returns empty list",
-      "status": "partial"
+      "status": "complete"
     },
     "pty": {
       "original": "Create, list, resize PTY sessions + WebSocket connect for I/O",
@@ -249,23 +253,107 @@
     }
   },
   "prioritized_backlog": [
-    {"priority": 1, "item": "CLI: session list + delete subcommand", "area": "opencodeR-client"},
-    {"priority": 2, "item": "CLI: models list subcommand", "area": "opencodeR-client"},
-    {"priority": 3, "item": "CLI: providers list subcommand", "area": "opencodeR-client"},
-    {"priority": 4, "item": "CLI: agents list subcommand", "area": "opencodeR-client"},
-    {"priority": 5, "item": "CLI: export session as JSON", "area": "opencodeR-client"},
-    {"priority": 6, "item": "CLI: shell completion generation", "area": "opencodeR"},
-    {"priority": 7, "item": "Server: LLM provider integration for actual prompt responses", "area": "opencodeR-server"},
-    {"priority": 8, "item": "Server: real PTY process creation (fork+exec)", "area": "opencodeR-server"},
-    {"priority": 9, "item": "Server: live session events via SSE stream", "area": "opencodeR-server"},
-    {"priority": 10, "item": "Server: database persistence (SQLite)", "area": "opencodeR-server"},
-    {"priority": 11, "item": "CLI: stats/token usage", "area": "opencodeR-client"},
-    {"priority": 12, "item": "CLI: import session from JSON", "area": "opencodeR-client"},
-    {"priority": 13, "item": "Server: real integration OAuth flow", "area": "opencodeR-server"},
-    {"priority": 14, "item": "CLI: plugin management", "area": "opencodeR"},
-    {"priority": 15, "item": "CLI: MCP server management", "area": "opencodeR"},
-    {"priority": 16, "item": "CLI: GitHub/PR integration", "area": "opencodeR"},
-    {"priority": 17, "item": "CLI: self-upgrade + uninstall", "area": "opencodeR"},
-    {"priority": 18, "item": "Server: web interface (opencode web)", "area": "opencodeR-server"}
+    {
+      "priority": 1,
+      "item": "Server: DELETE /api/session/:id endpoint",
+      "area": "opencodeR-server",
+      "status": "done"
+    },
+    {
+      "priority": 1,
+      "item": "CLI: session list + delete subcommand",
+      "area": "opencodeR-client",
+      "status": "done"
+    },
+    {
+      "priority": 2,
+      "item": "CLI: models list subcommand",
+      "area": "opencodeR-client",
+      "status": "done"
+    },
+    {
+      "priority": 3,
+      "item": "CLI: providers list subcommand",
+      "area": "opencodeR-client",
+      "status": "done"
+    },
+    {
+      "priority": 4,
+      "item": "CLI: agents list subcommand",
+      "area": "opencodeR-client",
+      "status": "done"
+    },
+    {
+      "priority": 5,
+      "item": "CLI: export session as JSON",
+      "area": "opencodeR-client",
+      "status": "done"
+    },
+    {
+      "priority": 6,
+      "item": "CLI: shell completion generation",
+      "area": "opencodeR",
+      "status": "done"
+    },
+    {
+      "priority": 7,
+      "item": "Server: LLM provider integration for actual prompt responses",
+      "area": "opencodeR-server"
+    },
+    {
+      "priority": 8,
+      "item": "Server: real PTY process creation (fork+exec)",
+      "area": "opencodeR-server"
+    },
+    {
+      "priority": 9,
+      "item": "Server: live session events via SSE stream",
+      "area": "opencodeR-server"
+    },
+    {
+      "priority": 10,
+      "item": "Server: database persistence (SQLite)",
+      "area": "opencodeR-server"
+    },
+    {
+      "priority": 11,
+      "item": "CLI: stats/token usage",
+      "area": "opencodeR-client"
+    },
+    {
+      "priority": 12,
+      "item": "CLI: import session from JSON",
+      "area": "opencodeR-client"
+    },
+    {
+      "priority": 13,
+      "item": "Server: real integration OAuth flow",
+      "area": "opencodeR-server"
+    },
+    {
+      "priority": 14,
+      "item": "CLI: plugin management",
+      "area": "opencodeR"
+    },
+    {
+      "priority": 15,
+      "item": "CLI: MCP server management",
+      "area": "opencodeR"
+    },
+    {
+      "priority": 16,
+      "item": "CLI: GitHub/PR integration",
+      "area": "opencodeR"
+    },
+    {
+      "priority": 17,
+      "item": "CLI: self-upgrade + uninstall",
+      "area": "opencodeR"
+    },
+    {
+      "priority": 18,
+      "item": "Server: web interface (opencode web)",
+      "area": "opencodeR-server"
+    }
   ]
 }
