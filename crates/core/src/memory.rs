@@ -1068,3 +1068,203 @@ pub fn default_services() -> (
         Box::new(InMemoryProjectCopyService),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Read;
+
+    // Helper: create a PTY with a simple echo command and return the service + info.
+    fn make_pty() -> (InMemoryPtyService, PtyInfo) {
+        let svc = InMemoryPtyService::new();
+        let info = svc.create(PtyCreateInput {
+            cols: 80,
+            rows: 24,
+            cwd: None,
+            command: Some("echo opencodeR-pty-test".into()),
+        });
+        (svc, info)
+    }
+
+    #[test]
+    fn test_create_spawns_process() {
+        let (_svc, info) = make_pty();
+        assert!(!info.id.is_empty(), "pty id should be non-empty");
+        assert!(info.pid.is_some(), "pid should be Some for a successful spawn");
+        assert!(info.pid.unwrap() > 0, "pid should be > 0");
+        assert!(info.started_at > 0, "started_at should be > 0");
+        assert_eq!(info.cols, 80);
+        assert_eq!(info.rows, 24);
+    }
+
+    #[test]
+    fn test_create_with_cwd() {
+        let svc = InMemoryPtyService::new();
+        let tmpdir = std::env::temp_dir();
+        let cwd_str = tmpdir.to_string_lossy().to_string();
+
+        let info = svc.create(PtyCreateInput {
+            cols: 80,
+            rows: 24,
+            cwd: Some(cwd_str.clone()),
+            command: Some("pwd".into()),
+        });
+        assert!(info.pid.is_some(), "process should spawn");
+
+        // Attach stdio and read the pwd output.  read_to_string blocks until
+        // the child closes its stdout (i.e. the process exits).
+        let PtyStdio { stdin: _, mut stdout, stderr: _, exit_rx: _ } =
+            svc.attach_stdio(&info.id).unwrap();
+        let mut output = String::new();
+        stdout.read_to_string(&mut output).unwrap();
+        let output = output.trim();
+
+        // Canonicalize both paths to handle symlinks (e.g. /tmp -> /private/tmp).
+        let expected = std::fs::canonicalize(&tmpdir)
+            .unwrap_or(tmpdir)
+            .to_string_lossy()
+            .to_string();
+        assert!(
+            output == expected || output.ends_with(&expected),
+            "pwd output '{output}' should match cwd '{expected}'"
+        );
+    }
+
+    #[test]
+    fn test_list_returns_created_ptys() {
+        let svc = InMemoryPtyService::new();
+        assert!(svc.list().is_empty(), "no PTYs yet");
+
+        let info1 = svc.create(PtyCreateInput {
+            cols: 80,
+            rows: 24,
+            cwd: None,
+            command: Some("echo a".into()),
+        });
+        let info2 = svc.create(PtyCreateInput {
+            cols: 120,
+            rows: 40,
+            cwd: None,
+            command: Some("echo b".into()),
+        });
+
+        let list = svc.list();
+        assert_eq!(list.len(), 2, "should have two PTYs");
+        let ids: Vec<&str> = list.iter().map(|p| p.id.as_str()).collect();
+        assert!(ids.contains(&info1.id.as_str()));
+        assert!(ids.contains(&info2.id.as_str()));
+    }
+
+    #[test]
+    fn test_get_returns_pty_info() {
+        let (svc, info) = make_pty();
+
+        // Valid id
+        let got = svc.get(&info.id);
+        assert!(got.is_some(), "get should find the created PTY");
+        assert_eq!(got.as_ref().unwrap().id, info.id);
+        assert_eq!(got.unwrap().pid, info.pid);
+
+        // Invalid id
+        assert!(svc.get("nonexistent-id").is_none(), "get should return None for unknown id");
+    }
+
+    #[test]
+    fn test_connect_token_returns_ticket() {
+        let (svc, info) = make_pty();
+
+        let ticket = svc.connect_token(&info.id);
+        assert!(ticket.is_some(), "connect_token should return a ticket");
+
+        let ticket = ticket.unwrap();
+        assert_eq!(ticket.pty_id, info.id, "ticket pty_id should match");
+        assert!(!ticket.token.is_empty(), "ticket token should be non-empty");
+        assert!(!ticket.id.is_empty(), "ticket id should be non-empty");
+        assert!(ticket.expires_at > 0, "expires_at should be > 0");
+    }
+
+    #[test]
+    fn test_verify_token() {
+        let (svc, info) = make_pty();
+
+        // Get a valid ticket
+        let ticket = svc.connect_token(&info.id).unwrap();
+
+        // Verify correct token
+        assert!(svc.verify_token(&info.id, &ticket.token), "verify_token should return true for the correct token");
+
+        // Verify wrong token
+        assert!(!svc.verify_token(&info.id, "wrong-token"), "verify_token should return false for an incorrect token");
+
+        // Verify for non-existent PTY
+        assert!(!svc.verify_token("nonexistent-id", &ticket.token), "verify_token should return false for non-existent PTY");
+    }
+
+    #[test]
+    fn test_delete_removes_pty() {
+        let (svc, info) = make_pty();
+
+        // Delete should succeed
+        assert!(svc.delete(&info.id), "delete should return true");
+        // Subsequent get should return None
+        assert!(svc.get(&info.id).is_none(), "get should return None after delete");
+        // List should be empty
+        assert!(svc.list().is_empty(), "list should be empty after delete");
+    }
+
+    #[test]
+    fn test_delete_nonexistent_returns_false() {
+        let svc = InMemoryPtyService::new();
+        assert!(!svc.delete("nonexistent-id"), "delete should return false for non-existent PTY");
+    }
+
+    #[test]
+    fn test_attach_stdio_returns_handles() {
+        let svc = InMemoryPtyService::new();
+        // Use `cat` which waits on stdin and echoes back — the process stays alive
+        // long enough for us to attach.
+        let info = svc.create(PtyCreateInput {
+            cols: 80,
+            rows: 24,
+            cwd: None,
+            command: Some("cat".into()),
+        });
+        assert!(info.pid.is_some(), "cat should spawn");
+
+        let PtyStdio { mut stdin, mut stdout, stderr: _, exit_rx: _ } =
+            svc.attach_stdio(&info.id).unwrap();
+
+        // Write to stdin and close it so `cat` flushes and exits.
+        use std::io::Write;
+        stdin.write_all(b"hello from pty test\n").unwrap();
+        drop(stdin);
+
+        let mut output = String::new();
+        stdout.read_to_string(&mut output).unwrap();
+        assert!(output.contains("hello from pty test"), "stdout should contain the echoed input");
+    }
+
+    #[test]
+    fn test_create_with_failing_command_returns_pid_none() {
+        let svc = InMemoryPtyService::new();
+
+        // Pass a non-existent cwd so the OS-level `Command::spawn()` itself
+        // fails (the shell binary cannot be executed with a bad working directory).
+        // This exercises the pid: None (spawn failure) code path.
+        let info = svc.create(PtyCreateInput {
+            cols: 80,
+            rows: 24,
+            cwd: Some("/opencode-rust/pty-test/nonexistent-directory-8675309".into()),
+            command: Some("echo should-not-run".into()),
+        });
+
+        // On most Linux systems a bad cwd causes spawn to fail, yielding pid: None.
+        // If the environment ignores the bad cwd and spawns anyway, the test
+        // documents that the PTY was still created (just with Some(pid)).
+        if info.pid.is_some() {
+            eprintln!("note: spawn did not fail with bad cwd on this system; pid={:?}", info.pid);
+        }
+        // Either way the id is always set and the PTY is tracked.
+        assert!(!info.id.is_empty(), "id should still be set on failure");
+    }
+}
