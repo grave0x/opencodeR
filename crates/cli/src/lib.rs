@@ -86,6 +86,11 @@ pub enum Commands {
         #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
         base_url: String,
     },
+    /// Show cost and token usage summary
+    Cost {
+        #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
+        base_url: String,
+    },
     /// Generate shell completion script
     Completion {
         /// Shell to generate completion for (bash, zsh, fish, powershell, elvish)
@@ -148,6 +153,10 @@ pub async fn main_entry(args: Vec<String>) -> anyhow::Result<()> {
         Some(Commands::Import { file, base_url }) => {
             init_tracing(false, None);
             cmd_import(base_url, file).await
+        }
+        Some(Commands::Cost { base_url }) => {
+            init_tracing(false, None);
+            cmd_cost(base_url).await
         }
     }
 }
@@ -600,5 +609,49 @@ async fn cmd_import(base_url: String, file: String) -> anyhow::Result<()> {
     }
 
     println!("Import complete.");
+    Ok(())
+}
+
+
+async fn cmd_cost(base_url: String) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let base_url = base_url.trim_end_matches('/').to_string();
+    let resp = client.get(format!("{}/api/cost/summary", base_url)).send().await?;
+    let body: serde_json::Value = resp.json().await?;
+    let data = &body["data"];
+
+    let sessions = data["total_sessions"].as_u64().unwrap_or(0);
+    let total_cost = data["total_cost"].as_f64().unwrap_or(0.0);
+    let tokens = &data["total_tokens"];
+
+    println!("Cost Summary");
+    println!("  Sessions: {}", sessions);
+    println!("  Total cost: {:.6}", total_cost);
+    println!("  Tokens — input: {}  output: {}  reasoning: {}",
+        tokens["input"].as_f64().unwrap_or(0.0) as u64,
+        tokens["output"].as_f64().unwrap_or(0.0) as u64,
+        tokens["reasoning"].as_f64().unwrap_or(0.0) as u64);
+    println!("  Cache — read: {}  write: {}",
+        tokens["cache"]["read"].as_f64().unwrap_or(0.0) as u64,
+        tokens["cache"]["write"].as_f64().unwrap_or(0.0) as u64);
+    println!("");
+
+    if let Some(by_provider) = data["by_provider"].as_object() {
+        if !by_provider.is_empty() {
+            println!("  By provider:");
+            for (provider, cost) in by_provider {
+                println!("    {}: {:.6}", provider, cost.as_f64().unwrap_or(0.0));
+            }
+        }
+    }
+    if let Some(by_model) = data["by_model"].as_object() {
+        if !by_model.is_empty() {
+            println!("  By model:");
+            for (model, cost) in by_model {
+                println!("    {}: {:.6}", model, cost.as_f64().unwrap_or(0.0));
+            }
+        }
+    }
+
     Ok(())
 }

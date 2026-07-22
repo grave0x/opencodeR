@@ -23,7 +23,7 @@ pub struct SessionInfo {
     pub revert: Option<RevertState>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TokenUsage {
     pub input: f64,
     pub output: f64,
@@ -31,7 +31,7 @@ pub struct TokenUsage {
     pub cache: CacheUsage,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CacheUsage {
     pub read: f64,
     pub write: f64,
@@ -57,4 +57,23 @@ pub enum ListDirection {
     Previous,
     #[serde(rename = "next")]
     Next,
+}
+
+// ── Cost breakdown ──────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CostBreakdown {
+    pub by_provider: std::collections::HashMap<String, f64>,
+    pub by_model: std::collections::HashMap<String, f64>,
+    pub total_cost: f64,
+    pub total_tokens: TokenUsage,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CostSummary {
+    pub total_sessions: usize,
+    pub total_cost: f64,
+    pub total_tokens: TokenUsage,
+    pub by_provider: std::collections::HashMap<String, f64>,
+    pub by_model: std::collections::HashMap<String, f64>,
 }

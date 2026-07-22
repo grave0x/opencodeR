@@ -457,3 +457,11 @@ pub async fn message(
         )),
     }
 }
+
+
+pub async fn cost_summary(
+    State(state): State<SharedState>,
+) -> Json<DataResponse<opencode_r_schema::session::CostSummary>> {
+    let summary = state.session.cost_summary();
+    Json(DataResponse { data: summary })
+}

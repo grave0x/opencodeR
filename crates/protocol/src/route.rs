@@ -107,6 +107,10 @@ pub fn session_question_reject(id: &str, req_id: &str) -> String {
 pub const MODEL_LIST: &str = "/api/model";
 pub const MODEL_LIST_PATTERN: &str = "/api/model";
 
+// ---- Cost ----
+pub const COST_SUMMARY: &str = "/api/cost/summary";
+pub const COST_SUMMARY_PATTERN: &str = "/api/cost/summary";
+
 // ---- Provider ----
 pub const PROVIDER_LIST: &str = "/api/provider";
 pub const PROVIDER_LIST_PATTERN: &str = "/api/provider";

@@ -173,6 +173,18 @@ impl SessionService for InMemorySessionService {
         let store = self.inner.lock().unwrap();
 
         let mut refs: Vec<&SessionInfo> = store.sessions.values().collect();
+
+        // Leetopt: search filter — case-insensitive match on title, agent, model, id
+        if let Some(search) = &query.search {
+            let lower = search.to_lowercase();
+            refs.retain(|s| {
+                s.title.to_lowercase().contains(&lower)
+                    || s.id.0.to_lowercase().contains(&lower)
+                    || s.agent.as_ref().is_some_and(|a| a.0.to_lowercase().contains(&lower))
+                    || s.model.as_ref().is_some_and(|m| m.0.to_lowercase().contains(&lower))
+            });
+        }
+
         let asc = matches!(query.order.as_deref(), Some("asc"));
         refs.sort_by(|a, b| a.time.created.cmp(&b.time.created));
         if !asc {
@@ -355,6 +367,58 @@ impl SessionService for InMemorySessionService {
     }
 
     fn interrupt(&self, _session_id: &SessionID) {}
+
+    fn cost_summary(&self) -> opencode_r_schema::session::CostSummary {
+        let store = self.inner.lock().unwrap();
+        let total_sessions = store.sessions.len();
+        let mut total_cost = 0.0_f64;
+        let mut total_tokens = opencode_r_schema::session::TokenUsage {
+            input: 0.0, output: 0.0, reasoning: 0.0,
+            cache: opencode_r_schema::session::CacheUsage { read: 0.0, write: 0.0 },
+        };
+        let mut by_provider: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+        let mut by_model: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+
+        for s in store.sessions.values() {
+            total_cost += s.cost;
+            total_tokens.input += s.tokens.input;
+            total_tokens.output += s.tokens.output;
+            total_tokens.reasoning += s.tokens.reasoning;
+            total_tokens.cache.read += s.tokens.cache.read;
+            total_tokens.cache.write += s.tokens.cache.write;
+            if let Some(model) = &s.model {
+                *by_model.entry(model.0.clone()).or_default() += s.cost;
+                let provider = model.0.split('/').next().unwrap_or("unknown").to_string();
+                *by_provider.entry(provider).or_default() += s.cost;
+            }
+        }
+
+        opencode_r_schema::session::CostSummary {
+            total_sessions,
+            total_cost,
+            total_tokens,
+            by_provider,
+            by_model,
+        }
+    }
+
+    fn cost_breakdown(&self, session_id: &SessionID) -> Option<opencode_r_schema::session::CostBreakdown> {
+        let store = self.inner.lock().unwrap();
+        let session = store.sessions.get(session_id)?;
+        let mut by_provider = std::collections::HashMap::new();
+        let mut by_model = std::collections::HashMap::new();
+        if let Some(model) = &session.model {
+            by_model.insert(model.0.clone(), session.cost);
+            let provider = model.0.split('/').next().unwrap_or("unknown").to_string();
+            by_provider.insert(provider, session.cost);
+        }
+        Some(opencode_r_schema::session::CostBreakdown {
+            by_provider,
+            by_model,
+            total_cost: session.cost,
+            total_tokens: session.tokens.clone(),
+        })
+    }
 
     fn messages(&self, query: SessionMessagesQuery) -> Result<Vec<SessionMessage>, String> {
         let store = self.inner.lock().unwrap();
