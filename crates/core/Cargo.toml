@@ -1,12 +1,12 @@
 [package]
-name = "opencode-core"
+name = "opencode-r-core"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-opencode-schema = { path = "../schema" }
-opencode-protocol = { path = "../protocol" }
-opencode-llm = { path = "../llm" }
+opencode-r-schema = { path = "../schema" }
+opencode-r-protocol = { path = "../protocol" }
+opencode-r-llm = { path = "../llm" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

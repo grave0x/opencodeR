@@ -1,21 +1,21 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
-use opencode_protocol::payload::{
+use opencode_r_protocol::payload::{
     DataResponse, NoContent,
     IntegrationConnectKeyInput, IntegrationConnectOAuthInput, IntegrationAttemptCompleteInput,
 };
-use opencode_core::{
+use opencode_r_core::{
     ConnectKeyInput, ConnectOAuthInput,
 };
 use crate::SharedState;
 
-pub async fn list(State(state): State<SharedState>) -> Json<DataResponse<Vec<opencode_schema::integration::Integration>>> {
+pub async fn list(State(state): State<SharedState>) -> Json<DataResponse<Vec<opencode_r_schema::integration::Integration>>> {
     Json(DataResponse { data: state.integration.list() })
 }
 
 pub async fn get(
     State(state): State<SharedState>,
     Path(integration_id): Path<String>,
-) -> Result<Json<DataResponse<opencode_schema::integration::Integration>>, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<DataResponse<opencode_r_schema::integration::Integration>>, (StatusCode, Json<serde_json::Value>)> {
     match state.integration.get(&integration_id) {
         Some(integration) => Ok(Json(DataResponse { data: integration })),
         None => Err((StatusCode::NOT_FOUND, Json(serde_json::json!({"message": "Integration not found"})))),

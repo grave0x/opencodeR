@@ -1,10 +1,10 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
-use opencode_protocol::payload::{
+use opencode_r_protocol::payload::{
     DataResponse, NoContent,
     SessionCreatePermissionInput, SessionPermissionReplyInput,
     PermissionCreateResponse,
 };
-use opencode_core::{
+use opencode_r_core::{
     PermissionCreateInput, PermissionReplyInput,
 };
 use crate::SharedState;

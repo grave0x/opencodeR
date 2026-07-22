@@ -1,7 +1,7 @@
-use opencode_schema::project::ProjectID;
-use opencode_schema::schema::{AbsolutePath, NonNegativeInt, PositiveInt, RelativePath};
-use opencode_schema::session::ListDirection;
-use opencode_schema::workspace::Workspace;
+use opencode_r_schema::project::ProjectID;
+use opencode_r_schema::schema::{AbsolutePath, NonNegativeInt, PositiveInt, RelativePath};
+use opencode_r_schema::session::ListDirection;
+use opencode_r_schema::workspace::Workspace;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

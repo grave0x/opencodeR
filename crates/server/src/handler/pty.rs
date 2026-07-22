@@ -1,10 +1,10 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
-use opencode_protocol::payload::{
+use opencode_r_protocol::payload::{
     DataResponse,
     PtyCreateInput, PtyUpdateInput, PtyConnectTokenResponse,
 };
-use opencode_core::{PtyCreateInput as CorePtyCreateInput, PtyUpdateInput as CorePtyUpdateInput};
-use opencode_schema::pty::PtyInfo;
+use opencode_r_core::{PtyCreateInput as CorePtyCreateInput, PtyUpdateInput as CorePtyUpdateInput};
+use opencode_r_schema::pty::PtyInfo;
 use crate::SharedState;
 
 pub async fn list(State(state): State<SharedState>) -> Json<DataResponse<Vec<PtyInfo>>> {

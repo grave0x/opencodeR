@@ -1,0 +1,181 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_PREFIX: opencodeR
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            arch: amd64
+            ext: ""
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            arch: arm64
+            ext: ""
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            arch: amd64
+            ext: ".exe"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation deps (Linux ARM)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build release binaries
+        run: |
+          cargo build --release --target ${{ matrix.target }} \
+            --bin opencodeR \
+            --bin opencodeR-server \
+            --bin opencodeR-client
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
+      - name: Package binaries
+        shell: bash
+        run: |
+          EXT="${{ matrix.ext }}"
+          ARCH="${{ matrix.arch }}"
+          mkdir -p dist
+
+          for BIN in opencodeR opencodeR-server opencodeR-client; do
+            SRC="target/${{ matrix.target }}/release/${BIN}${EXT}"
+            if [ -f "$SRC" ]; then
+              cp "$SRC" "dist/${BIN}-${ARCH}${EXT}"
+            fi
+          done
+
+          # Create tarball
+          cd dist
+          tar czf "opencodeR-${{ matrix.target }}.tar.gz" \
+            opencodeR-${ARCH}${EXT} \
+            opencodeR-server-${ARCH}${EXT} \
+            opencodeR-client-${ARCH}${EXT}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencodeR-${{ matrix.target }}
+          path: dist/
+          if-no-files-found: error
+
+  package-linux:
+    name: Linux packages
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: opencodeR-${{ matrix.target }}
+          path: dist/
+
+      - name: Build .deb package
+        run: |
+          mkdir -p pkg/deb/opencodeR/usr/bin
+          install -m 755 dist/opencodeR-amd64 pkg/deb/opencodeR/usr/bin/opencodeR
+          install -m 755 dist/opencodeR-server-amd64 pkg/deb/opencodeR/usr/bin/opencodeR-server
+          install -m 755 dist/opencodeR-client-amd64 pkg/deb/opencodeR/usr/bin/opencodeR-client
+          mkdir -p pkg/deb/opencodeR/DEBIAN
+          cat > pkg/deb/opencodeR/DEBIAN/control << 'EOF'
+Package: opencodeR
+Version: ${{ github.ref_name }}
+Section: devel
+Priority: optional
+Architecture: amd64
+Maintainer: opencodeR
+Depends: libc6
+Description: OpenCode AI coding agent (Rust port)
+  AI-powered development tool with HTTP API server and CLI client.
+EOF
+          dpkg-deb --build pkg/deb/opencodeR
+          mv pkg/deb/opencodeR.deb dist/opencodeR-amd64.deb
+
+      - name: Build .rpm package
+        run: |
+          mkdir -p pkg/rpm/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          cat > pkg/rpm/SPECS/opencodeR.spec << 'EOF'
+Name: opencodeR
+Version: $(echo "${{ github.ref_name }}" | sed 's/^v//')
+Release: 1
+Summary: OpenCode AI coding agent (Rust port)
+License: MIT
+URL: https://github.com/opencode-r/opencodeR
+BuildArch: x86_64
+
+%description
+AI-powered development tool with HTTP API server and CLI client.
+
+%install
+mkdir -p %{buildroot}/usr/bin
+install -m 755 %{_sourcedir}/opencodeR-* %{buildroot}/usr/bin/
+
+%files
+/usr/bin/opencodeR
+/usr/bin/opencodeR-server
+/usr/bin/opencodeR-client
+EOF
+          cp dist/opencodeR-{amd64,server-amd64,client-amd64} pkg/rpm/SOURCES/
+          rpmbuild --define "_topdir $(pwd)/pkg/rpm" -bb pkg/rpm/SPECS/opencodeR.spec || \
+            echo "rpmbuild not available, skipping RPM"
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencodeR-packages
+          path: dist/*.deb
+          if-no-files-found: ignore
+
+  release:
+    name: Create Release
+    needs: [build, package-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: opencodeR-*
+          merge-multiple: true
+        id: download
+
+      - name: Generate checksums
+        run: |
+          cd ${{ steps.download.outputs.download-path }}
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.download.outputs.download-path }}/*
+          generate_release_notes: true
+          fail_on_unmatched_files: false

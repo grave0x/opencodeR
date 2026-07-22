@@ -1,20 +1,28 @@
 [package]
-name = "opencode-cli"
+name = "opencode-r-cli"
 version.workspace = true
 edition.workspace = true
 
 [[bin]]
-name = "opencode"
+name = "opencodeR"
 path = "src/main.rs"
 
+[[bin]]
+name = "opencodeR-server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "opencodeR-client"
+path = "src/bin/client.rs"
+
 [dependencies]
-opencode-core = { path = "../core" }
-opencode-client = { path = "../client" }
-opencode-server = { path = "../server" }
-opencode-schema = { path = "../schema" }
-opencode-plugin = { path = "../plugin" }
-opencode-codemode = { path = "../codemode" }
-clap.workspace = true
+opencode-r-core = { path = "../core" }
+opencode-r-client = { path = "../client" }
+opencode-r-server = { path = "../server" }
+opencode-r-schema = { path = "../schema" }
+opencode-r-plugin = { path = "../plugin" }
+opencode-r-codemode = { path = "../codemode" }
+clap = { workspace = true, features = ["derive"] }
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -22,3 +30,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 axum.workspace = true
 anyhow.workspace = true
+reqwest = { workspace = true, features = ["json"] }

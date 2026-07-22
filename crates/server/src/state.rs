@@ -1,5 +1,5 @@
-use opencode_core::*;
-use opencode_schema::project::ProjectInfo;
+use opencode_r_core::*;
+use opencode_r_schema::project::ProjectInfo;
 
 pub struct AppState {
     pub agent: Box<dyn AgentService + Send + Sync>,
@@ -24,7 +24,7 @@ impl AppState {
         let (
             agent, catalog, session, pty, permission, question, filesystem,
             integration, credential, command, skill, reference, event, project_copy,
-        ) = opencode_core::memory::default_services();
+        ) = opencode_r_core::memory::default_services();
         Self {
             agent,
             catalog,

@@ -1,6 +1,6 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
-use opencode_protocol::payload::{CredentialUpdateInput, NoContent};
-use opencode_core::CredentialUpdateInput as CoreCredentialUpdateInput;
+use opencode_r_protocol::payload::{CredentialUpdateInput, NoContent};
+use opencode_r_core::CredentialUpdateInput as CoreCredentialUpdateInput;
 use crate::SharedState;
 
 pub async fn update(

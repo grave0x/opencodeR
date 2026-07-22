@@ -1,11 +1,11 @@
-use opencode_schema::agent::AgentID;
-use opencode_schema::model::ModelRef;
-use opencode_schema::permission::PermissionAction;
-use opencode_schema::pty_ticket::PtyTicket;
-use opencode_schema::revert::RevertState;
-use opencode_schema::session_event::SessionEvent;
-use opencode_schema::session_id::SessionID;
-use opencode_schema::session_message::{SessionMessage, SessionMessageID};
+use opencode_r_schema::agent::AgentID;
+use opencode_r_schema::model::ModelRef;
+use opencode_r_schema::permission::PermissionAction;
+use opencode_r_schema::pty_ticket::PtyTicket;
+use opencode_r_schema::revert::RevertState;
+use opencode_r_schema::session_event::SessionEvent;
+use opencode_r_schema::session_id::SessionID;
+use opencode_r_schema::session_message::{SessionMessage, SessionMessageID};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

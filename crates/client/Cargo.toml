@@ -1,12 +1,12 @@
 [package]
-name = "opencode-client"
+name = "opencode-r-client"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-opencode-core = { path = "../core" }
-opencode-protocol = { path = "../protocol" }
-opencode-schema = { path = "../schema" }
+opencode-r-core = { path = "../core" }
+opencode-r-protocol = { path = "../protocol" }
+opencode-r-schema = { path = "../schema" }
 reqwest.workspace = true
 tokio.workspace = true
 serde.workspace = true

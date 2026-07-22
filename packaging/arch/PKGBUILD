@@ -1,0 +1,19 @@
+# Maintainer: opencodeR
+# Contributor: opencodeR
+
+pkgname=opencodeR
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="OpenCode AI coding agent - Rust port"
+arch=('x86_64' 'aarch64')
+url="https://github.com/opencode-r/opencodeR"
+license=('MIT')
+depends=('glibc' 'gcc-libs')
+source=("https://github.com/opencode-r/opencodeR/releases/download/v${pkgver}/opencodeR-x86_64-unknown-linux-gnu.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  install -Dm755 "${srcdir}/opencodeR-amd64" "${pkgdir}/usr/bin/opencodeR"
+  install -Dm755 "${srcdir}/opencodeR-server-amd64" "${pkgdir}/usr/bin/opencodeR-server"
+  install -Dm755 "${srcdir}/opencodeR-client-amd64" "${pkgdir}/usr/bin/opencodeR-client"
+}

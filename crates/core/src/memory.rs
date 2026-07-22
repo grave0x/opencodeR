@@ -1,22 +1,22 @@
 // In-memory service implementations for development/testing
 use crate::*;
-use opencode_schema::agent::{AgentMode, AgentID};
-use opencode_schema::command::Command;
-use opencode_schema::integration::{Integration, IntegrationKind};
-use opencode_schema::model::{ModelInfo, ModelLimits, ModelRef};
-use opencode_schema::permission::{PermissionAction, PermissionRule, PermissionTarget};
-use opencode_schema::project::ProjectID;
-use opencode_schema::provider::{ProviderInfo, ProviderRequest};
-use opencode_schema::pty::PtyInfo;
-use opencode_schema::pty_ticket::PtyTicket;
-use opencode_schema::question::Question;
-use opencode_schema::reference::Reference;
-use opencode_schema::revert::{RevertKind, RevertState};
-use opencode_schema::session::{CacheUsage, SessionInfo, SessionTime, TokenUsage};
-use opencode_schema::session_event::{SessionEvent, SessionEventKind};
-use opencode_schema::session_id::SessionID;
-use opencode_schema::session_message::{MessageContent, MessageRole, SessionMessage, SessionMessageID};
-use opencode_schema::skill::Skill;
+use opencode_r_schema::agent::{AgentMode, AgentID};
+use opencode_r_schema::command::Command;
+use opencode_r_schema::integration::{Integration, IntegrationKind};
+use opencode_r_schema::model::{ModelInfo, ModelLimits, ModelRef};
+use opencode_r_schema::permission::{PermissionAction, PermissionRule, PermissionTarget};
+use opencode_r_schema::project::ProjectID;
+use opencode_r_schema::provider::{ProviderInfo, ProviderRequest};
+use opencode_r_schema::pty::PtyInfo;
+use opencode_r_schema::pty_ticket::PtyTicket;
+use opencode_r_schema::question::Question;
+use opencode_r_schema::reference::Reference;
+use opencode_r_schema::revert::{RevertKind, RevertState};
+use opencode_r_schema::session::{CacheUsage, SessionInfo, SessionTime, TokenUsage};
+use opencode_r_schema::session_event::{SessionEvent, SessionEventKind};
+use opencode_r_schema::session_id::SessionID;
+use opencode_r_schema::session_message::{MessageContent, MessageRole, SessionMessage, SessionMessageID};
+use opencode_r_schema::skill::Skill;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use chrono::Utc;
@@ -141,7 +141,7 @@ impl SessionStore {
     fn push_event(&mut self, session_id: &SessionID, kind: SessionEventKind, data: serde_json::Value) {
         let now = chrono::Utc::now();
         self.events.entry(session_id.clone()).or_default().push(SessionEvent {
-            id: opencode_schema::identifier::ascending(),
+            id: opencode_r_schema::identifier::ascending(),
             session_id: session_id.clone(),
             kind,
             data,
@@ -202,12 +202,12 @@ impl SessionService for InMemorySessionService {
     fn create(&self, input: SessionCreateInput) -> SessionInfo {
         let mut store = self.inner.lock().unwrap();
         let now = Utc::now();
-        let id = input.id.unwrap_or_else(|| SessionID(opencode_schema::identifier::ascending()));
+        let id = input.id.unwrap_or_else(|| SessionID(opencode_r_schema::identifier::ascending()));
         let info = SessionInfo {
             id: id.clone(),
             parent_id: None,
             project_id: ProjectID("default".into()),
-            agent: input.agent.map(|a| opencode_schema::agent::AgentID(a)),
+            agent: input.agent.map(|a| opencode_r_schema::agent::AgentID(a)),
             model: input.model.map(|m| ModelRef(m)),
             cost: 0.0,
             tokens: TokenUsage {
@@ -218,7 +218,7 @@ impl SessionService for InMemorySessionService {
             },
             time: SessionTime { created: now, updated: now, archived: None },
             title: "New Session".into(),
-            location: opencode_schema::location::LocationRef(input.location.unwrap_or_else(|| "local".into())),
+            location: opencode_r_schema::location::LocationRef(input.location.unwrap_or_else(|| "local".into())),
             subpath: None,
             revert: None,
         };
@@ -239,7 +239,7 @@ impl SessionService for InMemorySessionService {
     fn switch_agent(&self, session_id: &SessionID, agent: &str) -> Result<(), ()> {
         let mut store = self.inner.lock().unwrap();
         if let Some(session) = store.sessions.get_mut(session_id) {
-            session.agent = Some(opencode_schema::agent::AgentID(agent.into()));
+            session.agent = Some(opencode_r_schema::agent::AgentID(agent.into()));
             session.time.updated = Utc::now();
             store.push_event(session_id, SessionEventKind::MessageAdded, serde_json::json!({"type": "agent_switch", "agent": agent}));
             Ok(())
@@ -265,7 +265,7 @@ impl SessionService for InMemorySessionService {
         if !store.sessions.contains_key(session_id) {
             return Err("Session not found".into());
         }
-        let msg_id = input.id.unwrap_or_else(|| SessionMessageID(opencode_schema::identifier::ascending()));
+        let msg_id = input.id.unwrap_or_else(|| SessionMessageID(opencode_r_schema::identifier::ascending()));
         let now = Utc::now();
         let entry = store.messages.entry(session_id.clone()).or_default();
         entry.push(SessionMessage {
@@ -382,7 +382,7 @@ impl PtyService for InMemoryPtyService {
 
     fn create(&self, input: PtyCreateInput) -> PtyInfo {
         let mut ptys = self.ptys.lock().unwrap();
-        let id = opencode_schema::identifier::ascending();
+        let id = opencode_r_schema::identifier::ascending();
         let info = PtyInfo { id: id.clone(), cols: input.cols, rows: input.rows, pid: None };
         ptys.insert(id, info.clone());
         info
@@ -406,9 +406,9 @@ impl PtyService for InMemoryPtyService {
     fn connect_token(&self, id: &str) -> Option<PtyTicket> {
         if self.ptys.lock().unwrap().contains_key(id) {
             Some(PtyTicket {
-                id: opencode_schema::identifier::ascending(),
+                id: opencode_r_schema::identifier::ascending(),
                 pty_id: id.into(),
-                token: opencode_schema::identifier::ascending(),
+                token: opencode_r_schema::identifier::ascending(),
                 expires_at: Utc::now().timestamp_millis() + 300_000,
             })
         } else {
@@ -443,7 +443,7 @@ impl PermissionService for InMemoryPermissionService {
     }
 
     fn session_create(&self, input: PermissionCreateInput) -> serde_json::Value {
-        let id = input.id.unwrap_or_else(|| opencode_schema::identifier::ascending());
+        let id = input.id.unwrap_or_else(|| opencode_r_schema::identifier::ascending());
         let data = serde_json::json!({
             "id": id,
             "session_id": input.session_id,

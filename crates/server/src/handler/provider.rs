@@ -1,7 +1,7 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
-use opencode_protocol::payload::DataResponse;
-use opencode_protocol::error::ProviderNotFoundError;
-use opencode_schema::provider::ProviderInfo;
+use opencode_r_protocol::payload::DataResponse;
+use opencode_r_protocol::error::ProviderNotFoundError;
+use opencode_r_schema::provider::ProviderInfo;
 use crate::SharedState;
 
 pub async fn list(State(state): State<SharedState>) -> Json<DataResponse<Vec<ProviderInfo>>> {

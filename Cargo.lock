@@ -976,18 +976,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
-name = "opencode-cli"
+name = "opencode-r-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
  "clap",
- "opencode-client",
- "opencode-codemode",
- "opencode-core",
- "opencode-plugin",
- "opencode-schema",
- "opencode-server",
+ "opencode-r-client",
+ "opencode-r-codemode",
+ "opencode-r-core",
+ "opencode-r-plugin",
+ "opencode-r-schema",
+ "opencode-r-server",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",
@@ -996,13 +997,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "opencode-client"
+name = "opencode-r-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "opencode-core",
- "opencode-protocol",
- "opencode-schema",
+ "opencode-r-core",
+ "opencode-r-protocol",
+ "opencode-r-schema",
  "reqwest",
  "serde",
  "serde_json",
@@ -1012,12 +1013,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "opencode-codemode"
+name = "opencode-r-codemode"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "opencode-core",
- "opencode-schema",
+ "opencode-r-core",
+ "opencode-r-schema",
  "serde",
  "serde_json",
  "tokio",
@@ -1025,14 +1026,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "opencode-core"
+name = "opencode-r-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "opencode-llm",
- "opencode-protocol",
- "opencode-schema",
+ "opencode-r-llm",
+ "opencode-r-protocol",
+ "opencode-r-schema",
  "serde",
  "serde_json",
  "tokio",
@@ -1041,11 +1042,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "opencode-llm"
+name = "opencode-r-llm"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "opencode-schema",
+ "opencode-r-schema",
  "reqwest",
  "serde",
  "serde_json",
@@ -1054,26 +1055,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "opencode-plugin"
+name = "opencode-r-plugin"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "opencode-schema",
+ "opencode-r-schema",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "opencode-protocol"
+name = "opencode-r-protocol"
 version = "0.1.0"
 dependencies = [
- "opencode-schema",
+ "opencode-r-schema",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "opencode-schema"
+name = "opencode-r-schema"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -1085,16 +1086,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "opencode-server"
+name = "opencode-r-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
  "base64",
  "futures",
- "opencode-core",
- "opencode-protocol",
- "opencode-schema",
+ "opencode-r-core",
+ "opencode-r-protocol",
+ "opencode-r-schema",
  "serde",
  "serde_json",
  "tokio",

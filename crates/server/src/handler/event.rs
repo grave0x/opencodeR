@@ -16,7 +16,7 @@ pub async fn subscribe(
     let connected = Event::default()
         .event("message")
         .json_data(serde_json::json!({
-            "id": opencode_schema::identifier::ascending(),
+            "id": opencode_r_schema::identifier::ascending(),
             "type": "server.connected",
             "data": {}
         }))

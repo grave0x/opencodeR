@@ -1,5 +1,5 @@
 [package]
-name = "opencode-schema"
+name = "opencode-r-schema"
 version.workspace = true
 edition.workspace = true
 

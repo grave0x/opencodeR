@@ -1,0 +1,16 @@
+Source: opencodeR
+Section: devel
+Priority: optional
+Maintainer: opencodeR
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
+Homepage: https://github.com/opencode-r/opencodeR
+
+Package: opencodeR
+Architecture: amd64 arm64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: OpenCode AI coding agent (Rust port)
+ AI-powered development tool with HTTP API server
+ and CLI client for interacting with AI coding agents.
+ Includes opencodeR (combined binary), opencodeR-server,
+ and opencodeR-client.

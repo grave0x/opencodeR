@@ -1,5 +1,5 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use opencode_protocol::payload::{
+use opencode_r_protocol::payload::{
     CursorLinks, CursorResponse, DataResponse, NoContent,
     SessionActiveMap, SessionActive, SessionCreateInput,
     SessionSwitchAgentInput, SessionSwitchModelInput,
@@ -7,21 +7,21 @@ use opencode_protocol::payload::{
     RevertStageResponse, SessionContextResponse,
     SessionHistoryResponse,
 };
-use opencode_protocol::error::{
+use opencode_r_protocol::error::{
     SessionNotFoundError, MessageNotFoundError,
 };
-use opencode_protocol::query::{SessionsQuery, SessionHistoryQuery as QSessionHistoryQuery, SessionMessagesQuery};
-use opencode_core::{
+use opencode_r_protocol::query::{SessionsQuery, SessionHistoryQuery as QSessionHistoryQuery, SessionMessagesQuery};
+use opencode_r_core::{
     SessionListQuery, SessionCreateInput as CoreCreateInput,
     SessionPromptInput as CorePromptInput,
     SessionRevertStageInput as CoreRevertStageInput,
     SessionHistoryQuery as CoreHistoryQuery,
     SessionMessagesQuery as CoreMessagesQuery,
 };
-use opencode_schema::session::{SessionInfo, ListDirection};
-use opencode_schema::session_id::SessionID;
-use opencode_schema::session_message::{SessionMessage, SessionMessageID};
-use opencode_schema::session_event::SessionEvent;
+use opencode_r_schema::session::{SessionInfo, ListDirection};
+use opencode_r_schema::session_id::SessionID;
+use opencode_r_schema::session_message::{SessionMessage, SessionMessageID};
+use opencode_r_schema::session_event::SessionEvent;
 use crate::SharedState;
 
 /// Leetopt: encode cursor to base64url without serde_json Value allocation or format! overhead.

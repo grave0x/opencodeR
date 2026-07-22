@@ -3,7 +3,7 @@ use axum::{
     middleware as axum_mw,
     routing::{get, post, patch},
 };
-use opencode_protocol::route;
+use opencode_r_protocol::route;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;

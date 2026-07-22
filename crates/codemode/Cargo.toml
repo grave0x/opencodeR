@@ -1,11 +1,11 @@
 [package]
-name = "opencode-codemode"
+name = "opencode-r-codemode"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-opencode-schema = { path = "../schema" }
-opencode-core = { path = "../core" }
+opencode-r-schema = { path = "../schema" }
+opencode-r-core = { path = "../core" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true

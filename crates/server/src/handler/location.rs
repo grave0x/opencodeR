@@ -1,5 +1,5 @@
 use axum::Json;
-use opencode_schema::location::{LocationInfo, LocationKind, LocationRef};
+use opencode_r_schema::location::{LocationInfo, LocationKind, LocationRef};
 
 pub async fn get() -> Json<LocationInfo> {
     Json(LocationInfo {

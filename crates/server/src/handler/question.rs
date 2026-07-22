@@ -1,7 +1,7 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
-use opencode_protocol::payload::{DataResponse, NoContent, QuestionReplyInput};
-use opencode_core::QuestionReplyInput as CoreQuestionReplyInput;
-use opencode_schema::question::Question;
+use opencode_r_protocol::payload::{DataResponse, NoContent, QuestionReplyInput};
+use opencode_r_core::QuestionReplyInput as CoreQuestionReplyInput;
+use opencode_r_schema::question::Question;
 use crate::SharedState;
 
 pub async fn request_list(State(state): State<SharedState>) -> Json<DataResponse<Vec<Question>>> {

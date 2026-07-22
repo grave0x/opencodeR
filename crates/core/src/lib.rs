@@ -1,25 +1,25 @@
 // Core service trait definitions
 pub mod memory;
 
-use opencode_schema::agent::AgentInfo;
-use opencode_schema::command::Command;
-use opencode_schema::event::Event;
-use opencode_schema::integration::Integration;
-use opencode_schema::model::ModelInfo;
-use opencode_schema::permission::PermissionAction;
-use opencode_schema::provider::ProviderInfo;
-use opencode_schema::pty::PtyInfo;
-use opencode_schema::pty_ticket::PtyTicket;
-use opencode_schema::question::Question;
-use opencode_schema::reference::Reference;
-use opencode_schema::revert::RevertState;
-use opencode_schema::schema::{AbsolutePath, RelativePath};
-use opencode_schema::session::SessionInfo;
-use opencode_schema::session_event::SessionEvent;
-use opencode_schema::session_id::SessionID;
-use opencode_schema::session_message::{SessionMessage, SessionMessageID};
-use opencode_schema::skill::Skill;
-use opencode_schema::workspace::Workspace;
+use opencode_r_schema::agent::AgentInfo;
+use opencode_r_schema::command::Command;
+use opencode_r_schema::event::Event;
+use opencode_r_schema::integration::Integration;
+use opencode_r_schema::model::ModelInfo;
+use opencode_r_schema::permission::PermissionAction;
+use opencode_r_schema::provider::ProviderInfo;
+use opencode_r_schema::pty::PtyInfo;
+use opencode_r_schema::pty_ticket::PtyTicket;
+use opencode_r_schema::question::Question;
+use opencode_r_schema::reference::Reference;
+use opencode_r_schema::revert::RevertState;
+use opencode_r_schema::schema::{AbsolutePath, RelativePath};
+use opencode_r_schema::session::SessionInfo;
+use opencode_r_schema::session_event::SessionEvent;
+use opencode_r_schema::session_id::SessionID;
+use opencode_r_schema::session_message::{SessionMessage, SessionMessageID};
+use opencode_r_schema::skill::Skill;
+use opencode_r_schema::workspace::Workspace;
 use std::collections::HashMap;
 
 // ---- Agent Service ----

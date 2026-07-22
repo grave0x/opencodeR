@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Binaries are pre-built from upstream release
+	true
+
+override_dh_auto_test:
+	true
+
+override_dh_install:
+	install -Dm755 debian/opencodeR-amd64 debian/opencodeR/usr/bin/opencodeR
+	install -Dm755 debian/opencodeR-server-amd64 debian/opencodeR/usr/bin/opencodeR-server
+	install -Dm755 debian/opencodeR-client-amd64 debian/opencodeR/usr/bin/opencodeR-client
