@@ -1,5 +1,6 @@
 pub mod tui;
 pub mod monitor;
+pub mod agent;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -106,6 +107,11 @@ pub enum Commands {
         #[arg(short, long, default_value = "8081", env = "OPENCODE_PORT")]
         port: u16,
     },
+    /// Launch the interactive agent TUI
+    Agent {
+        #[arg(short, long, default_value = "8082", env = "OPENCODE_PORT")]
+        port: u16,
+    },
     /// Generate shell completion script
     Completion {
         /// Shell to generate completion for (bash, zsh, fish, powershell, elvish)
@@ -120,9 +126,16 @@ pub async fn main_entry(args: Vec<String>) -> anyhow::Result<()> {
 
     match cli.command {
         None => {
-            // Default: classic interactive TUI
+            // Default: launch in-process server + agent TUI
             init_tracing(false, None);
-            run_interactive(8081, None, None).await
+            let state = Arc::new(opencode_r_server::state::AppState::new());
+            let app = opencode_r_server::build_router(state);
+            let addr = SocketAddr::from(([127, 0, 0, 1], 8082));
+            let listener = tokio::net::TcpListener::bind(addr).await
+                .map_err(|e| anyhow::anyhow!("Failed to bind: {}", e))?;
+            tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); });
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+            crate::agent::run_agent(8082).await
         }
         Some(Commands::Server { port, password }) => {
             init_tracing(false, None);
@@ -180,6 +193,10 @@ pub async fn main_entry(args: Vec<String>) -> anyhow::Result<()> {
         Some(Commands::Monitor { port }) => {
             init_tracing(false, None);
             run_monitor(port).await
+        }
+        Some(Commands::Agent { port }) => {
+            init_tracing(false, None);
+            crate::agent::run_agent(port).await
         }
     }
 }
