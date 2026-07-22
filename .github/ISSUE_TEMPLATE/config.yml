@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: opencodeR Documentation
+    url: https://github.com/grave0x/opencodeR#readme
+    about: Check the README and feature roadmap first
+  - name: OpenCode Upstream
+    url: https://github.com/anomalyco/opencode
+    about: Original opencode project (TypeScript)

@@ -242,6 +242,7 @@ impl SessionService for InMemorySessionService {
             subpath: None,
             revert: None,
             status: opencode_r_schema::session::SessionStatus::Active,
+            group: None,
         };
         store.sessions.insert(id.clone(), info.clone());
         store.push_event(&id, SessionEventKind::SessionCreated, serde_json::json!({"title": "New Session"}));
@@ -425,6 +426,28 @@ impl SessionService for InMemorySessionService {
             info!(target: "opencode_r_core::session", session_id = %session_id.0, "session_terminated");
             Ok(())
         } else { Err(()) }
+    }
+
+    fn set_group(&self, session_id: &SessionID, group: Option<String>) -> Result<(), ()> {
+        let mut store = self.inner.lock().unwrap();
+        if let Some(s) = store.sessions.get_mut(session_id) {
+            s.group = group;
+            s.time.updated = Utc::now();
+            Ok(())
+        } else { Err(()) }
+    }
+
+    fn list_groups(&self) -> Vec<(String, usize)> {
+        let store = self.inner.lock().unwrap();
+        let mut groups: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        for s in store.sessions.values() {
+            if let Some(g) = &s.group {
+                *groups.entry(g.clone()).or_default() += 1;
+            }
+        }
+        let mut result: Vec<(String, usize)> = groups.into_iter().collect();
+        result.sort_by(|a, b| b.1.cmp(&a.1));
+        result
     }
 
     fn cost_summary(&self) -> opencode_r_schema::session::CostSummary {

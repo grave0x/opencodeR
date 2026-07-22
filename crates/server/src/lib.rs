@@ -45,6 +45,8 @@ pub fn build_router(state: SharedState) -> Router {
         .route(route::SESSION_RESUME_PATTERN, post(handler::session::resume))
         .route(route::SESSION_FREEZE_PATTERN, post(handler::session::freeze))
         .route(route::SESSION_TERMINATE_PATTERN, post(handler::session::terminate))
+        .route(route::SESSION_GROUP_PATTERN, post(handler::session::set_group))
+        .route(route::SESSION_GROUPS_PATTERN, get(handler::session::list_groups))
         .route(route::SESSION_MESSAGES_PATTERN, get(handler::session::messages))
         .route(route::SESSION_MESSAGE_PATTERN, get(handler::session::message))
         .route(route::SESSION_TRACE_PATTERN, get(handler::session::trace))

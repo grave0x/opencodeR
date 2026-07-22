@@ -545,3 +545,26 @@ pub async fn audit_log(
     let events = state.session.global_events(query.after.map(|a| a as u32), query.limit.map(|l| l as u32));
     Json(DataResponse { data: events })
 }
+
+pub async fn set_group(
+    State(state): State<SharedState>,
+    Path(session_id): Path<SessionID>,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<Json<NoContent>, (StatusCode, Json<SessionNotFoundError>)> {
+    let sid = session_id.0.clone();
+    let group = payload.get("group").and_then(|g| g.as_str().map(String::from));
+    state.session.set_group(&session_id, group).map(|_| Json(NoContent)).map_err(|_| (
+        StatusCode::NOT_FOUND,
+        Json(SessionNotFoundError { session_id: sid, message: format!("Session not found: {}", session_id.0) }),
+    ))
+}
+
+pub async fn list_groups(
+    State(state): State<SharedState>,
+) -> Json<DataResponse<Vec<serde_json::Value>>> {
+    let groups = state.session.list_groups();
+    let data: Vec<serde_json::Value> = groups.into_iter().map(|(name, count)|
+        serde_json::json!({"group": name, "count": count})
+    ).collect();
+    Json(DataResponse { data })
+}

@@ -122,6 +122,8 @@ pub trait SessionService: Send + Sync {
     fn resume(&self, session_id: &SessionID) -> Result<(), ()>;
     fn freeze(&self, session_id: &SessionID) -> Result<(), ()>;
     fn terminate(&self, session_id: &SessionID) -> Result<(), ()>;
+    fn set_group(&self, session_id: &SessionID, group: Option<String>) -> Result<(), ()>;
+    fn list_groups(&self) -> Vec<(String, usize)>;
     fn interrupt(&self, session_id: &SessionID);
     fn messages(&self, query: SessionMessagesQuery) -> Result<Vec<SessionMessage>, String>;
     fn message(&self, session_id: &SessionID, message_id: &SessionMessageID) -> Option<SessionMessage>;

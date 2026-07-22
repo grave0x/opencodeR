@@ -1,0 +1,74 @@
+name: Issue Triage
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-label by title
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.issue.title.toLowerCase();
+            const labels = [];
+
+            if (/feat/i.test(title)) labels.push('enhancement');
+            if (/bug|crash|panic|error|fail/i.test(title)) labels.push('bug');
+            if (/doc|readme|comment/i.test(title)) labels.push('documentation');
+            if (/tui|ui|display|render/i.test(title)) labels.push('tui');
+            if (/perf|slow|optimize|latency/i.test(title)) labels.push('performance');
+            if (/ci|build|release|package/i.test(title)) labels.push('ci');
+            if (/sec|auth|password|token/i.test(title)) labels.push('security');
+            if (/help|question|how/i.test(title)) labels.push('question');
+            if (/good.first|beginner|easy/i.test(title)) labels.push('good first issue');
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.issue_number,
+                labels: labels,
+              });
+            }
+
+      - name: Add to project board
+        if: ${{ !contains(github.event.issue.labels.*.name, 'question') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PROJECT_NUMBER="${{ vars.OPENCODE_PROJECT_NUMBER || '' }}"
+          if [ -n "$PROJECT_NUMBER" ]; then
+            ISSUE_ID="${{ github.event.issue.node_id }}"
+            gh project item-add --owner "${{ github.repository_owner }}" \
+              --project-number "$PROJECT_NUMBER" \
+              --id "$ISSUE_ID" || echo "Project board not configured, skipping"
+          fi
+
+      - name: Welcome message
+        if: ${{ github.event.action == 'opened' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const author = context.payload.issue.user.login;
+            const isFirst = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: author,
+              state: 'all',
+            }).then(r => r.data.length === 1);
+
+            if (isFirst) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.issue_number,
+                body: `👋 Welcome @${author}! Thanks for opening your first issue. A maintainer will review it shortly.`,
+              });
+            }

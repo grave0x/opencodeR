@@ -1,0 +1,36 @@
+name: Auto Assign
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-assign based on label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.issue.labels.map(l => l.name);
+            const assignees = [];
+
+            if (labels.some(l => /server|api/i.test(l))) assignees.push('grave0x');
+            if (labels.some(l => /tui|ui/i.test(l))) assignees.push('grave0x');
+            if (labels.some(l => /cli|client/i.test(l))) assignees.push('grave0x');
+            if (labels.some(l => /ci|build|release/i.test(l))) assignees.push('grave0x');
+            if (labels.some(l => /sec/i.test(l))) assignees.push('grave0x');
+            if (labels.some(l => /doc/i.test(l))) assignees.push('grave0x');
+
+            if (assignees.length > 0) {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.issue_number,
+                assignees: [...new Set(assignees)],
+              });
+            }

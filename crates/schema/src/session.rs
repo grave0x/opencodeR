@@ -22,6 +22,7 @@ pub struct SessionInfo {
     pub subpath: Option<RelativePath>,
     pub revert: Option<RevertState>,
     pub status: SessionStatus,
+    pub group: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
