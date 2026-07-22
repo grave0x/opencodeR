@@ -1,0 +1,16 @@
+[package]
+name = "opencode-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+opencode-schema = { path = "../schema" }
+opencode-protocol = { path = "../protocol" }
+opencode-llm = { path = "../llm" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+chrono.workspace = true

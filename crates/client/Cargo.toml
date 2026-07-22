@@ -1,0 +1,16 @@
+[package]
+name = "opencode-client"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+opencode-core = { path = "../core" }
+opencode-protocol = { path = "../protocol" }
+opencode-schema = { path = "../schema" }
+reqwest.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+uuid.workspace = true

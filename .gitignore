@@ -1,0 +1,16 @@
+/target
+**/*.rs.bk
+*.swp
+*.swo
+*~
+.DS_Store
+.env
+/.idea
+*.iml
+.vscode
+*.o
+*.exe
+*.pdb
+*.dSYM
+dist/
+release-assets/
