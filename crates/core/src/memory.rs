@@ -568,7 +568,8 @@ impl SessionService for InMemorySessionService {
 use std::process::{Child, ChildStdin, ChildStdout, Stdio};
 
 struct PtyProcess {
-    child: Child,
+    #[allow(dead_code)]
+    child: Child, // kept alive for the process lifetime; Drop waits on it
     stdin: Option<ChildStdin>,
     stdout: Option<ChildStdout>,
 }

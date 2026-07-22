@@ -910,17 +910,12 @@ fn export_session(session: Option<&SessionInfo>, messages: &[SessionMessage], fo
             serde_json::to_string_pretty(&Export { session, messages }).unwrap_or_default()
         }
         "yaml" => {
-            #[cfg(feature = "serde_yaml")]
-            {
-                #[derive(serde::Serialize)]
-                struct Export<'a> {
-                    session: Option<&'a SessionInfo>,
-                    messages: &'a [SessionMessage],
-                }
-                serde_yaml::to_string(&Export { session, messages }).unwrap_or_default()
+            #[derive(serde::Serialize)]
+            struct Export<'a> {
+                session: Option<&'a SessionInfo>,
+                messages: &'a [SessionMessage],
             }
-            #[cfg(not(feature = "serde_yaml"))]
-            String::new()
+            serde_yaml::to_string(&Export { session, messages }).unwrap_or_default()
         }
         "xml" => {
             let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<session>\n");
