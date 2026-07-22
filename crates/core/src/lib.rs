@@ -1,5 +1,6 @@
 // Core service trait definitions
 pub mod memory;
+pub mod discovery;
 
 use opencode_r_schema::agent::AgentInfo;
 use opencode_r_schema::command::Command;

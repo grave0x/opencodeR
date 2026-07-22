@@ -19,6 +19,7 @@ path = "src/bin/client.rs"
 opencode-r-core = { path = "../core" }
 opencode-r-client = { path = "../client" }
 opencode-r-server = { path = "../server" }
+opencode-r-protocol = { path = "../protocol" }
 opencode-r-schema = { path = "../schema" }
 opencode-r-plugin = { path = "../plugin" }
 opencode-r-codemode = { path = "../codemode" }
@@ -30,8 +31,10 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 axum.workspace = true
 anyhow.workspace = true
-reqwest = { workspace = true, features = ["json"] }
+futures.workspace = true
+reqwest = { workspace = true, features = ["json", "stream"] }
 ratatui.workspace = true
 crossterm.workspace = true
 chrono.workspace = true
 clap_complete.workspace = true
+serde_yaml.workspace = true

@@ -1,4 +1,5 @@
 pub mod tui;
+pub mod monitor;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -100,6 +101,11 @@ pub enum Commands {
         #[arg(short, long, default_value = "json")]
         format: String,
     },
+    /// Launch the session monitoring dashboard (TUI)
+    Monitor {
+        #[arg(short, long, default_value = "8081", env = "OPENCODE_PORT")]
+        port: u16,
+    },
     /// Generate shell completion script
     Completion {
         /// Shell to generate completion for (bash, zsh, fish, powershell, elvish)
@@ -170,6 +176,10 @@ pub async fn main_entry(args: Vec<String>) -> anyhow::Result<()> {
         Some(Commands::AuditLog { base_url, limit, format }) => {
             init_tracing(false, None);
             cmd_audit_log(base_url, limit, format).await
+        }
+        Some(Commands::Monitor { port }) => {
+            init_tracing(false, None);
+            run_monitor(port).await
         }
     }
 }
@@ -557,7 +567,7 @@ async fn cmd_export(base_url: String, session_id: String) -> anyhow::Result<()> 
 
 async fn cmd_completion(shell: String) -> anyhow::Result<()> {
     use clap::CommandFactory;
-    use clap_complete::{Generator, Shell};
+    use clap_complete::Shell;
     let mut cmd = Cli::command();
     let shell = match shell.to_lowercase().as_str() {
         "bash" => Shell::Bash,
@@ -702,4 +712,8 @@ async fn cmd_audit_log(base_url: String, limit: Option<u32>, format: String) -> 
     }
 
     Ok(())
+}
+
+async fn run_monitor(port: u16) -> anyhow::Result<()> {
+    crate::monitor::run(port).await
 }
