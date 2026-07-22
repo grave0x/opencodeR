@@ -235,27 +235,60 @@ pub async fn prompt(
     Json(payload): Json<SessionPromptInput>,
 ) -> Result<Json<DataResponse<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
     let sid = session_id.0.clone();
-    match state.session.prompt(&session_id, CorePromptInput {
+    let prompt_text = payload.prompt.clone();
+
+    // 1. Admit the user prompt
+    let msg_id = match state.session.prompt(&session_id, CorePromptInput {
         id: payload.id,
         prompt: payload.prompt,
         delivery: payload.delivery,
         resume: payload.resume,
     }) {
-        Ok(msg_id) => Ok(Json(DataResponse {
-            data: serde_json::json!({"id": msg_id, "status": "admitted"}),
-        })),
-        Err(e) if e == "Session not found" => Err((
+        Ok(id) => id,
+        Err(e) if e == "Session not found" => return Err((
             StatusCode::NOT_FOUND,
             Json(serde_json::to_value(SessionNotFoundError {
                 session_id: sid,
                 message: format!("Session not found: {}", session_id.0),
             }).unwrap()),
         )),
-        Err(e) => Err((
+        Err(e) => return Err((
             StatusCode::CONFLICT,
             Json(serde_json::json!({"message": e})),
         )),
+    };
+
+    // 2. Try to call LLM for a real response
+    let llm_config = opencode_r_llm::ProviderConfig::from_env();
+    if llm_config.is_configured() {
+        // Get session to determine model
+        let model = state.session.get(&session_id)
+            .and_then(|s| s.model.map(|m| m.0))
+            .unwrap_or_else(|| "anthropic/claude-sonnet-4".to_string());
+
+        if let Some(provider) = opencode_r_llm::provider_for_model(&llm_config, &model) {
+            match provider.complete(&prompt_text, &model.split('/').nth(1).unwrap_or(&model)) {
+                Ok(response) => {
+                    let preview = response.content[..100.min(response.content.len())].to_string();
+                    let _ = state.session.push_message(&session_id,
+                        opencode_r_schema::session_message::MessageRole::Assistant,
+                        vec![opencode_r_schema::session_message::MessageContent::Text { text: response.content }],
+                    );
+                    return Ok(Json(DataResponse {
+                        data: serde_json::json!({"id": msg_id, "status": "completed", "response_preview": preview}),
+                    }));
+                }
+                Err(llm_err) => {
+                    tracing::warn!(target: "opencode_r_server", session_id = %session_id.0, error = %llm_err, "LLM call failed");
+                }
+            }
+        }
     }
+
+    // 3. Fallback: return admitted without AI response
+    Ok(Json(DataResponse {
+        data: serde_json::json!({"id": msg_id, "status": "admitted"}),
+    }))
 }
 
 pub async fn compact(

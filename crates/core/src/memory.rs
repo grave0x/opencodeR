@@ -540,6 +540,27 @@ impl SessionService for InMemorySessionService {
         store.messages.get(session_id)
             .and_then(|msgs| msgs.iter().find(|m| m.id == *message_id).cloned())
     }
+
+    fn push_message(&self, session_id: &SessionID, role: MessageRole, content: Vec<MessageContent>) -> Result<String, ()> {
+        let mut store = self.inner.lock().unwrap();
+        if !store.sessions.contains_key(session_id) {
+            return Err(());
+        }
+        let msg_id = SessionMessageID(opencode_r_schema::identifier::ascending());
+        let now = Utc::now();
+        let entry = store.messages.entry(session_id.clone()).or_default();
+        entry.push(SessionMessage {
+            id: msg_id.clone(),
+            session_id: session_id.clone(),
+            role,
+            content,
+            created_at: now,
+        });
+        store.push_event(session_id, SessionEventKind::MessageAdded,
+            serde_json::json!({"message_id": msg_id.0, "role": "assistant"}));
+        info!(target: "opencode_r_core::session", session_id = %session_id.0, msg_id = %msg_id.0, "assistant_message_pushed");
+        Ok(msg_id.0)
+    }
 }
 
 // ---- InMemoryPtyService ----

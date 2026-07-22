@@ -18,7 +18,7 @@ use opencode_r_schema::schema::{AbsolutePath, RelativePath};
 use opencode_r_schema::session::SessionInfo;
 use opencode_r_schema::session_event::SessionEvent;
 use opencode_r_schema::session_id::SessionID;
-use opencode_r_schema::session_message::{SessionMessage, SessionMessageID};
+use opencode_r_schema::session_message::{MessageContent, MessageRole, SessionMessage, SessionMessageID};
 use opencode_r_schema::skill::Skill;
 use opencode_r_schema::workspace::Workspace;
 use std::collections::HashMap;
@@ -129,6 +129,7 @@ pub trait SessionService: Send + Sync {
     fn interrupt(&self, session_id: &SessionID);
     fn messages(&self, query: SessionMessagesQuery) -> Result<Vec<SessionMessage>, String>;
     fn message(&self, session_id: &SessionID, message_id: &SessionMessageID) -> Option<SessionMessage>;
+    fn push_message(&self, session_id: &SessionID, role: MessageRole, content: Vec<MessageContent>) -> Result<String, ()>;
 }
 
 // ---- PTY Service ----
