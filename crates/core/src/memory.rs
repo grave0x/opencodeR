@@ -565,18 +565,22 @@ impl SessionService for InMemorySessionService {
 
 // ---- InMemoryPtyService ----
 
-use std::process::{Child, ChildStdin, ChildStdout, Stdio};
+use std::process::{ChildStdin, ChildStdout, Stdio};
 
 struct PtyProcess {
-    #[allow(dead_code)]
-    child: Child, // kept alive for the process lifetime; Drop waits on it
+    pid: u32,
     stdin: Option<ChildStdin>,
     stdout: Option<ChildStdout>,
+    stderr: Option<std::process::ChildStderr>,
+    #[allow(dead_code)]
+    exit_tx: Option<tokio::sync::oneshot::Sender<i32>>,
+    exit_rx: Option<tokio::sync::oneshot::Receiver<i32>>,
 }
 
 pub struct InMemoryPtyService {
     ptys: Mutex<HashMap<String, PtyInfo>>,
     processes: Mutex<HashMap<String, PtyProcess>>,
+    tokens: Mutex<HashMap<String, String>>, // pty_id → generated token for connect verification
 }
 
 impl InMemoryPtyService {
@@ -584,6 +588,7 @@ impl InMemoryPtyService {
         Self {
             ptys: Mutex::new(HashMap::new()),
             processes: Mutex::new(HashMap::new()),
+            tokens: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -599,34 +604,54 @@ impl PtyService for InMemoryPtyService {
         let shell = "sh";
 
         // Spawn a real shell process
-        let result = std::process::Command::new(shell)
-            .arg("-c")
-            .arg(&cmd)
+        let mut command = std::process::Command::new(shell);
+        command.arg("-c").arg(&cmd)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn();
-
-        let pid = result.as_ref().ok().map(|c| c.id());
-        if pid.is_none() {
-            info!(target: "opencode_r_core::pty", cmd = %cmd, "PTY spawn failed");
+            .stderr(Stdio::piped());
+        if let Some(cwd) = &input.cwd {
+            command.current_dir(cwd);
         }
+        let result = command.spawn();
+
+        let mut child = match result {
+            Ok(c) => c,
+            Err(e) => {
+                info!(target: "opencode_r_core::pty", cmd = %cmd, error = %e, "PTY spawn failed");
+                return PtyInfo {
+                    id, cols: input.cols, rows: input.rows,
+                    pid: None, started_at: Utc::now().timestamp_millis(),
+                };
+            }
+        };
+        let child_pid = child.id();
+        let now = Utc::now().timestamp_millis();
         let info = PtyInfo {
             id: id.clone(),
             cols: input.cols,
             rows: input.rows,
-            pid,
+            pid: Some(child_pid),
+            started_at: now,
         };
+
+        let stdin = child.stdin.take();
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
+        let (exit_tx, exit_rx) = tokio::sync::oneshot::channel();
+        std::thread::spawn(move || {
+            let status = child.wait();
+            let code = status.map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
+            let _ = exit_tx.send(code);
+        });
 
         let mut ptys = self.ptys.lock().unwrap();
         ptys.insert(id.clone(), info.clone());
-
-        if let Ok(mut child) = result {
-            let stdin = child.stdin.take();
-            let stdout = child.stdout.take();
-            let mut processes = self.processes.lock().unwrap();
-            processes.insert(id, PtyProcess { child, stdin, stdout });
-        }
+        let mut processes = self.processes.lock().unwrap();
+        processes.insert(id, PtyProcess {
+            pid: child_pid, stdin, stdout, stderr,
+            exit_tx: None,
+            exit_rx: Some(exit_rx),
+        });
 
         info
     }
@@ -648,15 +673,22 @@ impl PtyService for InMemoryPtyService {
 
     fn connect_token(&self, id: &str) -> Option<PtyTicket> {
         if self.ptys.lock().unwrap().contains_key(id) {
-            Some(PtyTicket {
+            let token = opencode_r_schema::identifier::ascending();
+            let ticket = PtyTicket {
                 id: opencode_r_schema::identifier::ascending(),
                 pty_id: id.into(),
-                token: opencode_r_schema::identifier::ascending(),
+                token: token.clone(),
                 expires_at: Utc::now().timestamp_millis() + 300_000,
-            })
+            };
+            self.tokens.lock().unwrap().insert(id.to_string(), token);
+            Some(ticket)
         } else {
             None
         }
+    }
+
+    fn verify_token(&self, id: &str, token: &str) -> bool {
+        self.tokens.lock().unwrap().get(id) == Some(&token.to_string())
     }
 
     fn attach_stdio(&self, id: &str) -> Option<PtyStdio> {
@@ -664,10 +696,38 @@ impl PtyService for InMemoryPtyService {
         if let Some(p) = processes.get_mut(id) {
             let stdin = p.stdin.take()?;
             let stdout = p.stdout.take()?;
-            Some(PtyStdio { stdin, stdout })
+            let stderr = p.stderr.take()?;
+            let exit_rx = p.exit_rx.take()?;
+            Some(PtyStdio { stdin, stdout, stderr, exit_rx })
         } else {
             None
         }
+    }
+
+    fn delete(&self, id: &str) -> bool {
+        let mut ptys = self.ptys.lock().unwrap();
+        if ptys.remove(id).is_none() {
+            return false;
+        }
+        self.tokens.lock().unwrap().remove(id);
+        let mut processes = self.processes.lock().unwrap();
+        if let Some(p) = processes.remove(id) {
+            // Kill via PID using libc (portable, no external command)
+            let pid = p.pid;
+            drop(processes);
+            if pid > 0 {
+                // SAFETY: pid is a valid child PID we spawned; signal is best-effort
+                let result = std::process::Command::new("kill")
+                    .arg(pid.to_string())
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .spawn();
+                if result.is_err() {
+                    info!(target: "opencode_r_core::pty", pid = %pid, "kill command not available, child may remain running");
+                }
+            }
+        }
+        true
     }
 }
 

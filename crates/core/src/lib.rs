@@ -152,12 +152,16 @@ pub trait PtyService: Send + Sync {
     fn get(&self, id: &str) -> Option<PtyInfo>;
     fn update(&self, id: &str, input: PtyUpdateInput) -> Option<PtyInfo>;
     fn connect_token(&self, id: &str) -> Option<PtyTicket>;
+    fn verify_token(&self, id: &str, token: &str) -> bool;
     fn attach_stdio(&self, id: &str) -> Option<PtyStdio>;
+    fn delete(&self, id: &str) -> bool;
 }
 
 pub struct PtyStdio {
     pub stdin: std::process::ChildStdin,
     pub stdout: std::process::ChildStdout,
+    pub stderr: std::process::ChildStderr,
+    pub exit_rx: tokio::sync::oneshot::Receiver<i32>,
 }
 
 // ---- Permission Service ----

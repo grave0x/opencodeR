@@ -6,4 +6,5 @@ pub struct PtyInfo {
     pub cols: u32,
     pub rows: u32,
     pub pid: Option<u32>,
+    pub started_at: i64,
 }

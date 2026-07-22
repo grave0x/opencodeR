@@ -123,7 +123,7 @@ pub fn build_router(state: SharedState) -> Router {
         )
         .route(
             route::PTY_GET_PATTERN,
-            get(handler::pty::get).put(handler::pty::update),
+            get(handler::pty::get).put(handler::pty::update).delete(handler::pty::delete_pty),
         )
         .route(route::PTY_CONNECT_TOKEN_PATTERN, post(handler::pty::connect_token))
         .route(route::PTY_CONNECT_PATTERN, get(handler::pty::connect))
