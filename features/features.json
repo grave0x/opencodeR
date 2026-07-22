@@ -1,0 +1,112 @@
+{
+  "branch": "new-features",
+  "created": "2026-07-22",
+  "source": "Orchestrator feature comparison (OctoAlly, LLM Orchestra, LaneConductor, FORGE, Sandcastle, Concilium, LLMTrio)",
+  "features": {
+    "session_table": {
+      "id": 1,
+      "name": "Session table with status, tokens, cost",
+      "status": "partial",
+      "opencodeR_status": "Session info has tokens+cost fields. Missing status field and aggregation endpoint.",
+      "effort": "small"
+    },
+    "realtime_events": {
+      "id": 2,
+      "name": "Real-time event stream",
+      "status": "done",
+      "opencodeR_status": "SSE streaming via /api/session/:id/event with broadcast channel.",
+      "effort": "done"
+    },
+    "session_lifecycle": {
+      "id": 3,
+      "name": "Pause / Freeze / Continue / Kill",
+      "status": "planned",
+      "opencodeR_status": "Not implemented. Needs status field + lifecycle endpoints.",
+      "effort": "medium"
+    },
+    "cost_breakdown": {
+      "id": 4,
+      "name": "Cost breakdown by model/provider",
+      "status": "planned",
+      "opencodeR_status": "Only per-session total cost. No breakdown or aggregation.",
+      "effort": "medium"
+    },
+    "trace_viewer": {
+      "id": 5,
+      "name": "Session detail / trace viewer",
+      "status": "planned",
+      "opencodeR_status": "Messages and events available. No structured trace view.",
+      "effort": "large"
+    },
+    "terminal_console": {
+      "id": 6,
+      "name": "Built-in per-session terminal console",
+      "status": "planned",
+      "opencodeR_status": "PTY API works with real processes. WebSocket not fully wired.",
+      "effort": "medium"
+    },
+    "kanban_workspace": {
+      "id": 7,
+      "name": "Kanban / workspace grouping",
+      "status": "planned",
+      "opencodeR_status": "No workspace/grouping concept exists.",
+      "effort": "large"
+    },
+    "batch_operations": {
+      "id": 8,
+      "name": "Multi-select + batch operations",
+      "status": "planned",
+      "opencodeR_status": "Not implemented.",
+      "effort": "medium"
+    },
+    "audit_log": {
+      "id": 9,
+      "name": "Audit log + JSONL export",
+      "status": "planned",
+      "opencodeR_status": "JSON export exists. JSONL format and audit log endpoint missing.",
+      "effort": "small"
+    },
+    "omnibox": {
+      "id": 10,
+      "name": "Omnibox / command palette",
+      "status": "planned",
+      "opencodeR_status": "Not implemented.",
+      "effort": "medium"
+    },
+    "resource_limits": {
+      "id": 11,
+      "name": "Resource limits per instance",
+      "status": "out_of_scope",
+      "opencodeR_status": "Requires container runtime. Out of scope.",
+      "effort": "n/a"
+    },
+    "session_search": {
+      "id": 12,
+      "name": "Session search / filter",
+      "status": "planned",
+      "opencodeR_status": "Query params exist on API but InMemoryService doesn't implement filtering.",
+      "effort": "small"
+    },
+    "cost_optimization": {
+      "id": 13,
+      "name": "Cost optimization / model routing",
+      "status": "out_of_scope",
+      "opencodeR_status": "Out of scope — sessions use configured model.",
+      "effort": "n/a"
+    },
+    "parallel_agents": {
+      "id": 14,
+      "name": "Parallel agent execution",
+      "status": "out_of_scope",
+      "opencodeR_status": "Sessions already run independently.",
+      "effort": "n/a"
+    },
+    "specialist_agents": {
+      "id": 15,
+      "name": "Specialist agent library",
+      "status": "out_of_scope",
+      "opencodeR_status": "opencodeR is the agent runtime, not a library.",
+      "effort": "n/a"
+    }
+  }
+}

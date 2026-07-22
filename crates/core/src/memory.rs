@@ -127,37 +127,44 @@ struct SessionStore {
     sessions: HashMap<SessionID, SessionInfo>,
     messages: HashMap<SessionID, Vec<SessionMessage>>,
     events: HashMap<SessionID, Vec<SessionEvent>>,
+    event_tx: tokio::sync::broadcast::Sender<SessionEvent>,
 }
 
 impl SessionStore {
-    fn new() -> Self {
-        Self {
+    fn new() -> (Self, tokio::sync::broadcast::Receiver<SessionEvent>) {
+        let (tx, rx) = tokio::sync::broadcast::channel(256);
+        (Self {
             sessions: HashMap::new(),
             messages: HashMap::new(),
             events: HashMap::new(),
-        }
+            event_tx: tx,
+        }, rx)
     }
 
     /// Leetopt: push an event under the same lock — no second mutex acquisition.
     fn push_event(&mut self, session_id: &SessionID, kind: SessionEventKind, data: serde_json::Value) {
         let now = chrono::Utc::now();
-        self.events.entry(session_id.clone()).or_default().push(SessionEvent {
+        let event = SessionEvent {
             id: opencode_r_schema::identifier::ascending(),
             session_id: session_id.clone(),
             kind,
             data,
             timestamp: now,
-        });
+        };
+        self.events.entry(session_id.clone()).or_default().push(event.clone());
+        let _ = self.event_tx.send(event);
     }
 }
 
 pub struct InMemorySessionService {
     inner: Mutex<SessionStore>,
+    event_rx: tokio::sync::broadcast::Receiver<SessionEvent>,
 }
 
 impl InMemorySessionService {
     pub fn new() -> Self {
-        Self { inner: Mutex::new(SessionStore::new()) }
+        let (store, rx) = SessionStore::new();
+        Self { inner: Mutex::new(store), event_rx: rx }
     }
 }
 
@@ -343,6 +350,10 @@ impl SessionService for InMemorySessionService {
         store.events.get(session_id).cloned().unwrap_or_default()
     }
 
+    fn subscribe_events(&self) -> tokio::sync::broadcast::Receiver<SessionEvent> {
+        self.event_rx.resubscribe()
+    }
+
     fn interrupt(&self, _session_id: &SessionID) {}
 
     fn messages(&self, query: SessionMessagesQuery) -> Result<Vec<SessionMessage>, String> {
@@ -375,13 +386,25 @@ impl SessionService for InMemorySessionService {
 
 // ---- InMemoryPtyService ----
 
+use std::process::{Child, ChildStdin, ChildStdout, Stdio};
+
+struct PtyProcess {
+    child: Child,
+    stdin: Option<ChildStdin>,
+    stdout: Option<ChildStdout>,
+}
+
 pub struct InMemoryPtyService {
     ptys: Mutex<HashMap<String, PtyInfo>>,
+    processes: Mutex<HashMap<String, PtyProcess>>,
 }
 
 impl InMemoryPtyService {
     pub fn new() -> Self {
-        Self { ptys: Mutex::new(HashMap::new()) }
+        Self {
+            ptys: Mutex::new(HashMap::new()),
+            processes: Mutex::new(HashMap::new()),
+        }
     }
 }
 
@@ -391,10 +414,40 @@ impl PtyService for InMemoryPtyService {
     }
 
     fn create(&self, input: PtyCreateInput) -> PtyInfo {
-        let mut ptys = self.ptys.lock().unwrap();
         let id = opencode_r_schema::identifier::ascending();
-        let info = PtyInfo { id: id.clone(), cols: input.cols, rows: input.rows, pid: None };
-        ptys.insert(id, info.clone());
+        let cmd = input.command.unwrap_or_else(|| "bash -c 'echo opencodeR-pty'".into());
+        let shell = "sh";
+
+        // Spawn a real shell process
+        let result = std::process::Command::new(shell)
+            .arg("-c")
+            .arg(&cmd)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn();
+
+        let pid = result.as_ref().ok().map(|c| c.id());
+        if pid.is_none() {
+            info!(target: "opencode_r_core::pty", cmd = %cmd, "PTY spawn failed");
+        }
+        let info = PtyInfo {
+            id: id.clone(),
+            cols: input.cols,
+            rows: input.rows,
+            pid,
+        };
+
+        let mut ptys = self.ptys.lock().unwrap();
+        ptys.insert(id.clone(), info.clone());
+
+        if let Ok(mut child) = result {
+            let stdin = child.stdin.take();
+            let stdout = child.stdout.take();
+            let mut processes = self.processes.lock().unwrap();
+            processes.insert(id, PtyProcess { child, stdin, stdout });
+        }
+
         info
     }
 

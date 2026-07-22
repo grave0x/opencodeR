@@ -1,4 +1,8 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
+use axum::response::{
+    sse::{Event, KeepAlive},
+    Sse,
+};
 use opencode_r_protocol::payload::{
     CursorLinks, CursorResponse, DataResponse, NoContent,
     SessionActiveMap, SessionActive, SessionCreateInput,
@@ -21,7 +25,8 @@ use opencode_r_core::{
 use opencode_r_schema::session::{SessionInfo, ListDirection};
 use opencode_r_schema::session_id::SessionID;
 use opencode_r_schema::session_message::{SessionMessage, SessionMessageID};
-use opencode_r_schema::session_event::SessionEvent;
+use futures::stream::{self, Stream, StreamExt};
+use std::convert::Infallible;
 use crate::SharedState;
 
 /// Leetopt: encode cursor to base64url without serde_json Value allocation or format! overhead.
@@ -359,9 +364,39 @@ pub async fn events(
     State(state): State<SharedState>,
     Path(session_id): Path<SessionID>,
     Query(query): Query<QSessionHistoryQuery>,
-) -> Json<DataResponse<Vec<SessionEvent>>> {
-    let events = state.session.events(&session_id, query.after.map(|a| a as u32));
-    Json(DataResponse { data: events })
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let after = query.after.map(|a| a as u32);
+
+    // Replay past events
+    let past = state.session.events(&session_id, after);
+    let replay_stream = stream::iter(past.into_iter().map(|ev| {
+        Ok(Event::default()
+            .event("message")
+            .json_data(ev)
+            .unwrap())
+    }));
+
+    // Subscribe to live events
+    let rx = state.session.subscribe_events();
+    let sid = session_id.0.clone();
+    let live_stream = tokio_stream::wrappers::BroadcastStream::new(rx)
+        .filter_map(move |result| {
+            let sid = sid.clone();
+            async move {
+                match result {
+                    Ok(ev) if ev.session_id.0 == sid => {
+                        Some(Ok(Event::default()
+                            .event("message")
+                            .json_data(ev)
+                            .unwrap()))
+                    }
+                    _ => None, // wrong session or lagged — skip
+                }
+            }
+        });
+
+    let stream = replay_stream.chain(live_stream);
+    Sse::new(stream).keep_alive(KeepAlive::new())
 }
 
 pub async fn interrupt(

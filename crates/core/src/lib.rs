@@ -114,6 +114,7 @@ pub trait SessionService: Send + Sync {
     fn context(&self, session_id: &SessionID) -> Result<Vec<SessionMessage>, String>;
     fn history(&self, session_id: &SessionID, query: SessionHistoryQuery) -> Result<SessionHistoryResult, String>;
     fn events(&self, session_id: &SessionID, after: Option<u32>) -> Vec<SessionEvent>;
+    fn subscribe_events(&self) -> tokio::sync::broadcast::Receiver<SessionEvent>;
     fn interrupt(&self, session_id: &SessionID);
     fn messages(&self, query: SessionMessagesQuery) -> Result<Vec<SessionMessage>, String>;
     fn message(&self, session_id: &SessionID, message_id: &SessionMessageID) -> Option<SessionMessage>;

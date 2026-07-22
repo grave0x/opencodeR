@@ -202,36 +202,86 @@ fn draw_status_bar(frame: &mut Frame, area: Rect, port: u16, auth_enabled: bool)
     frame.render_widget(paragraph, area);
 }
 
+/// Leetopt: level colors via byte comparison — zero match overhead per entry
+fn level_color(level: &str) -> Color {
+    let first = level.as_bytes().first().copied().unwrap_or(b'?');
+    match first {
+        b'E' => Color::Red,
+        b'W' => Color::Yellow,
+        b'I' => Color::Green,
+        b'D' => Color::Blue,
+        b'T' => Color::DarkGray,
+        _ => Color::White,
+    }
+}
+
+const LEVEL_PREFIX: &[(&str, &str)] = &[
+    ("ERROR", "ERR"), ("WARN", "WRN"), ("INFO", "INF"),
+    ("DEBUG", "DBG"), ("TRACE", "TRC"),
+];
+
+fn level_prefix(level: &str) -> &'static str {
+    for (k, v) in LEVEL_PREFIX {
+        if *k == level { return v; }
+    }
+    "???"
+}
+
 fn draw_log_panel(
     frame: &mut Frame,
     area: Rect,
     log_buffer: &Arc<Mutex<LogBuffer>>,
     scroll_offset: usize,
 ) {
-    let logbuf = log_buffer.lock().unwrap();
-
-    // Count per-level for the title
-    let total = logbuf.entries.len();
-
-    let items: Vec<ListItem> = if scroll_offset == 0 {
-        // Auto-scroll: show last N items that fit
+    // Leetopt: clone entries under lock, release immediately — minimize contention
+    let (entries, total) = {
+        let logbuf = log_buffer.lock().unwrap();
+        let total = logbuf.entries.len();
+        if total == 0 {
+            drop(logbuf);
+            let block = Block::default()
+                .title(" Server Log (0 events) ")
+                .title_style(Style::default().fg(Color::Cyan))
+                .borders(Borders::ALL)
+                .border_set(border::ROUNDED);
+            frame.render_widget(Paragraph::new("").block(block), area);
+            return;
+        }
         let height = (area.height as usize).saturating_sub(2);
-        let start = total.saturating_sub(height);
-        logbuf.entries[start..]
-            .iter()
-            .rev()
-            .map(|entry| format_log_entry(entry))
-            .collect()
-    } else {
-        // Manual scroll
-        let end = total.saturating_sub(scroll_offset);
-        let start = end.saturating_sub((area.height as usize).saturating_sub(2));
-        logbuf.entries[start..end]
-            .iter()
-            .rev()
-            .map(|entry| format_log_entry(entry))
-            .collect()
+        let (start, end) = if scroll_offset == 0 {
+            let s = total.saturating_sub(height);
+            (s, total)
+        } else {
+            let e = total.saturating_sub(scroll_offset);
+            let s = e.saturating_sub(height);
+            (s, e)
+        };
+        let cloned: Vec<LogEntry> = logbuf.entries[start..end].iter().rev().cloned().collect();
+        (cloned, total)
     };
+    // Lock released — rendering is allocation-only from here
+
+    let mut items = Vec::with_capacity(entries.len());
+    for entry in &entries {
+        let color = level_color(&entry.level);
+        let prefix = level_prefix(&entry.level);
+
+        // Leetopt: single allocation per line — no intermediate format!() for truncation
+        let msg = if entry.message.len() > 120 {
+            // SAFETY: we checked the length, slicing at 117 is in-bounds
+            unsafe { entry.message.get_unchecked(..117) }
+        } else {
+            &entry.message
+        };
+
+        let line = Line::from(vec![
+            Span::styled(format!(" {} ", entry.timestamp), Style::default().fg(Color::DarkGray)),
+            Span::styled(format!(" {} ", prefix), Style::default().fg(color).add_modifier(Modifier::BOLD)),
+            Span::raw(" "),
+            Span::styled(msg.to_string(), Style::default()),
+        ]);
+        items.push(ListItem::new(line));
+    }
 
     let title = format!(" Server Log ({} events) ", total);
     let block = Block::default()
@@ -239,35 +289,8 @@ fn draw_log_panel(
         .title_style(Style::default().fg(Color::Cyan))
         .borders(Borders::ALL)
         .border_set(border::ROUNDED);
-
     let list = List::new(items).block(block);
     frame.render_widget(list, area);
-}
-
-fn format_log_entry(entry: &LogEntry) -> ListItem<'static> {
-    let (color, prefix) = match entry.level.as_str() {
-        "ERROR" => (Color::Red, "ERR"),
-        "WARN" => (Color::Yellow, "WRN"),
-        "INFO" => (Color::Green, "INF"),
-        "DEBUG" => (Color::Blue, "DBG"),
-        "TRACE" => (Color::DarkGray, "TRC"),
-        _ => (Color::White, "???"),
-    };
-
-    // Truncate message for display
-    let display_msg = if entry.message.len() > 120 {
-        format!("{}...", &entry.message[..117])
-    } else {
-        entry.message.clone()
-    };
-
-    let line = Line::from(vec![
-        Span::styled(format!(" {} ", entry.timestamp), Style::default().fg(Color::DarkGray)),
-        Span::styled(format!(" {} ", prefix), Style::default().fg(color).add_modifier(Modifier::BOLD)),
-        Span::raw(" "),
-        Span::styled(display_msg, Style::default()),
-    ]);
-    ListItem::new(line)
 }
 
 fn draw_help_bar(frame: &mut Frame, area: Rect) {

@@ -49,6 +49,48 @@ pub enum Commands {
         #[arg(short = 'P', long, env = "OPENCODE_PASSWORD")]
         password: Option<String>,
     },
+    /// List sessions
+    Sessions {
+        #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
+        base_url: String,
+        #[arg(short, long)]
+        limit: Option<u32>,
+    },
+    /// List available models
+    Models {
+        #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
+        base_url: String,
+        #[arg(short, long)]
+        provider: Option<String>,
+    },
+    /// List configured providers
+    Providers {
+        #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
+        base_url: String,
+    },
+    /// List available agents
+    Agents {
+        #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
+        base_url: String,
+    },
+    /// Export a session as JSON
+    Export {
+        #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
+        base_url: String,
+        session_id: String,
+    },
+    /// Import session data from JSON file
+    Import {
+        /// Path to JSON file to import
+        file: String,
+        #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
+        base_url: String,
+    },
+    /// Generate shell completion script
+    Completion {
+        /// Shell to generate completion for (bash, zsh, fish, powershell, elvish)
+        shell: String,
+    },
 }
 
 // ── Combined binary entry (opencodeR) ───────────────────────────────────
@@ -79,6 +121,33 @@ pub async fn main_entry(args: Vec<String>) -> anyhow::Result<()> {
             let log_buffer = LogBuffer::new();
             init_tracing(true, Some(log_buffer.clone()));
             run_tui_with_server(port, password, log_buffer).await
+        }
+        Some(Commands::Sessions { base_url, limit }) => {
+            init_tracing(false, None);
+            cmd_sessions(base_url, limit).await
+        }
+        Some(Commands::Models { base_url, provider }) => {
+            init_tracing(false, None);
+            cmd_models(base_url, provider).await
+        }
+        Some(Commands::Providers { base_url }) => {
+            init_tracing(false, None);
+            cmd_providers(base_url).await
+        }
+        Some(Commands::Agents { base_url }) => {
+            init_tracing(false, None);
+            cmd_agents(base_url).await
+        }
+        Some(Commands::Export { base_url, session_id }) => {
+            init_tracing(false, None);
+            cmd_export(base_url, session_id).await
+        }
+        Some(Commands::Completion { shell }) => {
+            cmd_completion(shell).await
+        }
+        Some(Commands::Import { file, base_url }) => {
+            init_tracing(false, None);
+            cmd_import(base_url, file).await
         }
     }
 }
@@ -326,5 +395,210 @@ async fn run_client_inner(base_url: &str, session: Option<String>, one_shot: Opt
         }
     }
 
+    Ok(())
+}
+
+// ── CLI subcommand handlers ─────────────────────────────────────────────
+
+async fn cmd_sessions(base_url: String, limit: Option<u32>) -> anyhow::Result<()> {
+
+    let client = reqwest::Client::new();
+    let base_url = base_url.trim_end_matches('/').to_string();
+    let url = match limit {
+        Some(l) => format!("{}/api/session?limit={}", base_url, l),
+        None => format!("{}/api/session", base_url),
+    };
+    let resp = client.get(&url).send().await?;
+    let body: serde_json::Value = resp.json().await?;
+    let Some(sessions) = body["data"].as_array() else {
+        println!("No sessions found.");
+        return Ok(());
+    };
+    if sessions.is_empty() {
+        println!("No sessions found.");
+        return Ok(());
+    }
+    println!("Sessions ({}):", sessions.len());
+    for s in sessions {
+        let id = s["id"].as_str().unwrap_or("?");
+        let agent = s["agent"].as_str().unwrap_or("?");
+        let model = s["model"].as_str().unwrap_or("?");
+        let title = s["title"].as_str().unwrap_or("Untitled");
+        let created = s["time"]["created"].as_str().unwrap_or("?");
+        let id_short = if id.len() > 16 { &id[..16] } else { id };
+        let created_short = if created.len() > 19 { &created[..19] } else { created };
+        println!("  {}  {}  {}  {}  {}", id_short, agent, model, title, created_short);
+    }
+    Ok(())
+}
+
+async fn cmd_models(base_url: String, provider: Option<String>) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let base_url = base_url.trim_end_matches('/').to_string();
+    let resp = client.get(format!("{}/api/model", base_url)).send().await?;
+    let body: serde_json::Value = resp.json().await?;
+    let Some(models) = body["data"].as_array() else {
+        println!("No models found.");
+        return Ok(());
+    };
+    let filtered: Vec<&serde_json::Value> = match &provider {
+        Some(p) => models.iter().filter(|m| m["provider_id"].as_str() == Some(p.as_str())).collect(),
+        None => models.iter().collect(),
+    };
+    if filtered.is_empty() {
+        println!("No models found.");
+        return Ok(());
+    }
+    println!("Models:");
+    for m in filtered {
+        let id = m["id"].as_str().unwrap_or("?");
+        let name = m["name"].as_str().unwrap_or("?");
+        let prov = m["provider_id"].as_str().unwrap_or("?");
+        println!("  {}  ({})  {}", id, prov, name);
+    }
+    Ok(())
+}
+
+async fn cmd_providers(base_url: String) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let base_url = base_url.trim_end_matches('/').to_string();
+    let resp = client.get(format!("{}/api/provider", base_url)).send().await?;
+    let body: serde_json::Value = resp.json().await?;
+    let Some(providers) = body["data"].as_array() else {
+        println!("No providers configured.");
+        return Ok(());
+    };
+    if providers.is_empty() {
+        println!("No providers configured.");
+        return Ok(());
+    }
+    println!("Providers:");
+    for p in providers {
+        let id = p["id"].as_str().unwrap_or("?");
+        let name = p["name"].as_str().unwrap_or("?");
+        let base = p["base_url"].as_str().unwrap_or("default");
+        let models = p["models"].as_array().map(|a| a.len()).unwrap_or(0);
+        println!("  {}  {}  {}  ({} models)", id, name, base, models);
+    }
+    Ok(())
+}
+
+async fn cmd_agents(base_url: String) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let base_url = base_url.trim_end_matches('/').to_string();
+    let resp = client.get(format!("{}/api/agent", base_url)).send().await?;
+    let body: serde_json::Value = resp.json().await?;
+    let Some(agents) = body["data"].as_array() else {
+        println!("No agents available.");
+        return Ok(());
+    };
+    if agents.is_empty() {
+        println!("No agents available.");
+        return Ok(());
+    }
+    println!("Agents:");
+    for a in agents {
+        let id = a["id"].as_str().unwrap_or("?");
+        let desc = a["description"].as_str().unwrap_or("");
+        let mode = a["mode"].as_str().unwrap_or("?");
+        println!("  {}  ({})  {}", id, mode, desc);
+    }
+    Ok(())
+}
+
+async fn cmd_export(base_url: String, session_id: String) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let base_url = base_url.trim_end_matches('/').to_string();
+
+    let resp = client.get(format!("{}/api/session/{}", base_url, session_id)).send().await?;
+    if !resp.status().is_success() {
+        anyhow::bail!("Session not found: {}", session_id);
+    }
+    let session: serde_json::Value = resp.json().await?;
+
+    let resp = client.get(format!("{}/api/session/{}/message", base_url, session_id)).send().await?;
+    let messages: serde_json::Value = resp.json().await?;
+
+    let resp = client.get(format!("{}/api/session/{}/event", base_url, session_id)).send().await?;
+    let events: serde_json::Value = resp.json().await?;
+
+    let export = serde_json::json!({
+        "session": session["data"],
+        "messages": messages["data"],
+        "events": events["data"],
+        "exported_at": chrono::Utc::now().to_rfc3339(),
+    });
+
+    println!("{}", serde_json::to_string_pretty(&export)?);
+    Ok(())
+}
+
+async fn cmd_completion(shell: String) -> anyhow::Result<()> {
+    use clap::CommandFactory;
+    use clap_complete::{Generator, Shell};
+    let mut cmd = Cli::command();
+    let shell = match shell.to_lowercase().as_str() {
+        "bash" => Shell::Bash,
+        "zsh" => Shell::Zsh,
+        "fish" => Shell::Fish,
+        "powershell" | "ps" => Shell::PowerShell,
+        "elvish" => Shell::Elvish,
+        _ => anyhow::bail!("Unsupported shell: {}. Supported: bash, zsh, fish, powershell, elvish", shell),
+    };
+    let name = cmd.get_name().to_string();
+    clap_complete::generate(shell, &mut cmd, name, &mut std::io::stdout());
+    Ok(())
+}
+
+async fn cmd_import(base_url: String, file: String) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let base_url = base_url.trim_end_matches('/').to_string();
+
+    let json_data = tokio::fs::read_to_string(&file).await
+        .map_err(|e| anyhow::anyhow!("Failed to read file '{}': {}", file, e))?;
+    let data: serde_json::Value = serde_json::from_str(&json_data)
+        .map_err(|e| anyhow::anyhow!("Failed to parse JSON: {}", e))?;
+
+    let session = &data["session"];
+    let messages = data["messages"].as_array();
+    let session_id = session["id"].as_str().unwrap_or("?");
+
+    // Check if session already exists
+    let exists = client.get(format!("{}/api/session/{}", base_url, session_id))
+        .send().await.map(|r| r.status().is_success()).unwrap_or(false);
+
+    if !exists {
+        // Create the session
+        let create_payload = serde_json::json!({
+            "id": session_id,
+            "agent": session["agent"],
+            "model": session["model"],
+        });
+        client.post(format!("{}/api/session", base_url))
+            .json(&create_payload)
+            .send().await?;
+        println!("Imported session: {}", session_id);
+    } else {
+        println!("Session already exists: {}", session_id);
+    }
+
+    // Replay prompts
+    if let Some(msgs) = messages {
+        for msg in msgs {
+            if msg["role"] == "user" {
+                if let Some(text) = msg["content"].as_array()
+                    .and_then(|c| c.first())
+                    .and_then(|c| c["text"].as_str())
+                {
+                    client.post(format!("{}/api/session/{}/prompt", base_url, session_id))
+                        .json(&serde_json::json!({"prompt": text, "resume": false}))
+                        .send().await?;
+                    println!("  Replayed message: {}...", &text[..40.min(text.len())]);
+                }
+            }
+        }
+    }
+
+    println!("Import complete.");
     Ok(())
 }

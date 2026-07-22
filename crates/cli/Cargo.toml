@@ -34,3 +34,4 @@ reqwest = { workspace = true, features = ["json"] }
 ratatui.workspace = true
 crossterm.workspace = true
 chrono.workspace = true
+clap_complete.workspace = true
