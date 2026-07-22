@@ -367,6 +367,16 @@ impl SessionService for InMemorySessionService {
         self.event_rx.resubscribe()
     }
 
+    fn global_events(&self, _after: Option<u32>, limit: Option<u32>) -> Vec<SessionEvent> {
+        let store = self.inner.lock().unwrap();
+        let mut all: Vec<SessionEvent> = store.events.values().flat_map(|v| v.iter().cloned()).collect();
+        all.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        if let Some(l) = limit {
+            all.truncate(l as usize);
+        }
+        all
+    }
+
     fn interrupt(&self, _session_id: &SessionID) {}
 
     fn pause(&self, session_id: &SessionID) -> Result<(), ()> {

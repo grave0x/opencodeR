@@ -52,6 +52,8 @@ pub fn build_router(state: SharedState) -> Router {
         .route(route::MODEL_LIST_PATTERN, get(handler::model::list))
         // Cost
         .route(route::COST_SUMMARY_PATTERN, get(handler::session::cost_summary))
+        // Audit Log
+        .route(route::AUDIT_LOG_PATTERN, get(handler::session::audit_log))
         // Provider
         .route(route::PROVIDER_LIST_PATTERN, get(handler::provider::list))
         .route(route::PROVIDER_GET_PATTERN, get(handler::provider::get))

@@ -80,6 +80,18 @@ pub fn session_events(id: &str) -> String {
 pub fn session_interrupt(id: &str) -> String {
     format!("/api/session/{id}/interrupt")
 }
+pub fn session_pause(id: &str) -> String {
+    format!("/api/session/{id}/pause")
+}
+pub fn session_resume(id: &str) -> String {
+    format!("/api/session/{id}/resume")
+}
+pub fn session_freeze(id: &str) -> String {
+    format!("/api/session/{id}/freeze")
+}
+pub fn session_terminate(id: &str) -> String {
+    format!("/api/session/{id}/terminate")
+}
 pub fn session_message(id: &str, msg_id: &str) -> String {
     format!("/api/session/{id}/message/{msg_id}")
 }
@@ -115,6 +127,10 @@ pub const MODEL_LIST_PATTERN: &str = "/api/model";
 // ---- Cost ----
 pub const COST_SUMMARY: &str = "/api/cost/summary";
 pub const COST_SUMMARY_PATTERN: &str = "/api/cost/summary";
+
+// ---- Audit Log ----
+pub const AUDIT_LOG: &str = "/api/audit-log";
+pub const AUDIT_LOG_PATTERN: &str = "/api/audit-log";
 
 // ---- Provider ----
 pub const PROVIDER_LIST: &str = "/api/provider";

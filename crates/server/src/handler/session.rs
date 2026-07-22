@@ -23,6 +23,7 @@ use opencode_r_core::{
     SessionMessagesQuery as CoreMessagesQuery,
 };
 use opencode_r_schema::session::{SessionInfo, ListDirection};
+use opencode_r_schema::session_event::SessionEvent;
 use opencode_r_schema::session_id::SessionID;
 use opencode_r_schema::session_message::{SessionMessage, SessionMessageID};
 use futures::stream::{self, Stream, StreamExt};
@@ -535,4 +536,12 @@ pub async fn trace(
         "event_count": events.len(),
     });
     Ok(Json(trace))
+}
+
+pub async fn audit_log(
+    State(state): State<SharedState>,
+    Query(query): Query<QSessionHistoryQuery>,
+) -> Json<DataResponse<Vec<SessionEvent>>> {
+    let events = state.session.global_events(query.after.map(|a| a as u32), query.limit.map(|l| l as u32));
+    Json(DataResponse { data: events })
 }

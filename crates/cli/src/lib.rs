@@ -91,6 +91,15 @@ pub enum Commands {
         #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
         base_url: String,
     },
+    /// Show audit log of all session events
+    AuditLog {
+        #[arg(short, long, default_value = "http://127.0.0.1:8081", env = "OPENCODE_BASE_URL")]
+        base_url: String,
+        #[arg(short, long)]
+        limit: Option<u32>,
+        #[arg(short, long, default_value = "json")]
+        format: String,
+    },
     /// Generate shell completion script
     Completion {
         /// Shell to generate completion for (bash, zsh, fish, powershell, elvish)
@@ -157,6 +166,10 @@ pub async fn main_entry(args: Vec<String>) -> anyhow::Result<()> {
         Some(Commands::Cost { base_url }) => {
             init_tracing(false, None);
             cmd_cost(base_url).await
+        }
+        Some(Commands::AuditLog { base_url, limit, format }) => {
+            init_tracing(false, None);
+            cmd_audit_log(base_url, limit, format).await
         }
     }
 }
@@ -649,6 +662,41 @@ async fn cmd_cost(base_url: String) -> anyhow::Result<()> {
             println!("  By model:");
             for (model, cost) in by_model {
                 println!("    {}: {:.6}", model, cost.as_f64().unwrap_or(0.0));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+
+async fn cmd_audit_log(base_url: String, limit: Option<u32>, format: String) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let base_url = base_url.trim_end_matches('/').to_string();
+    let url = match limit {
+        Some(l) => format!("{}/api/audit-log?limit={}", base_url, l),
+        None => format!("{}/api/audit-log", base_url),
+    };
+    let resp = client.get(&url).send().await?;
+    let body: serde_json::Value = resp.json().await?;
+    let Some(events) = body["data"].as_array() else {
+        println!("No events found.");
+        return Ok(());
+    };
+
+    if format == "jsonl" {
+        for ev in events {
+            println!("{}", serde_json::to_string(ev)?);
+        }
+    } else {
+        if events.is_empty() {
+            println!("Audit Log ({} events):", events.len());
+            for ev in events {
+                let id = ev["id"].as_str().unwrap_or("?").chars().take(16).collect::<String>();
+                let kind = ev["kind"].as_str().unwrap_or("?");
+                let sid = ev["session_id"].as_str().unwrap_or("?").chars().take(12).collect::<String>();
+                let ts = ev["timestamp"].as_str().unwrap_or("?");
+                println!("  {}  {}  {}  {}", &ts[11..19], kind, id, sid);
             }
         }
     }
