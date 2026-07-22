@@ -1,7 +1,10 @@
-// opencodeR-server — server-only binary
+// opencodeR-server — server binary (server TUI by default, --headless for headless)
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let mut server_args = vec!["opencodeR-server".to_string(), "server".to_string()];
-    server_args.extend(std::env::args().skip(1));
-    opencode_r_cli::main_entry(server_args).await
+    let args: Vec<String> = std::env::args().collect();
+    let headless = args.iter().any(|a| a == "--headless");
+    let filtered: Vec<String> = args.into_iter()
+        .filter(|a| a != "--headless")
+        .collect();
+    opencode_r_cli::server_entry(filtered, headless).await
 }
