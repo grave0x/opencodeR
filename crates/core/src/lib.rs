@@ -117,6 +117,10 @@ pub trait SessionService: Send + Sync {
     fn subscribe_events(&self) -> tokio::sync::broadcast::Receiver<SessionEvent>;
     fn cost_summary(&self) -> opencode_r_schema::session::CostSummary;
     fn cost_breakdown(&self, session_id: &SessionID) -> Option<opencode_r_schema::session::CostBreakdown>;
+    fn pause(&self, session_id: &SessionID) -> Result<(), ()>;
+    fn resume(&self, session_id: &SessionID) -> Result<(), ()>;
+    fn freeze(&self, session_id: &SessionID) -> Result<(), ()>;
+    fn terminate(&self, session_id: &SessionID) -> Result<(), ()>;
     fn interrupt(&self, session_id: &SessionID);
     fn messages(&self, query: SessionMessagesQuery) -> Result<Vec<SessionMessage>, String>;
     fn message(&self, session_id: &SessionID, message_id: &SessionMessageID) -> Option<SessionMessage>;

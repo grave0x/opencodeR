@@ -41,6 +41,10 @@ pub fn build_router(state: SharedState) -> Router {
         .route(route::SESSION_HISTORY_PATTERN, get(handler::session::history))
         .route(route::SESSION_EVENTS_PATTERN, get(handler::session::events))
         .route(route::SESSION_INTERRUPT_PATTERN, post(handler::session::interrupt))
+        .route(route::SESSION_PAUSE_PATTERN, post(handler::session::pause))
+        .route(route::SESSION_RESUME_PATTERN, post(handler::session::resume))
+        .route(route::SESSION_FREEZE_PATTERN, post(handler::session::freeze))
+        .route(route::SESSION_TERMINATE_PATTERN, post(handler::session::terminate))
         .route(route::SESSION_MESSAGES_PATTERN, get(handler::session::messages))
         .route(route::SESSION_MESSAGE_PATTERN, get(handler::session::message))
         // Model

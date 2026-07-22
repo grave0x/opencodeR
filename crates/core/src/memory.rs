@@ -241,6 +241,7 @@ impl SessionService for InMemorySessionService {
             location: opencode_r_schema::location::LocationRef(input.location.unwrap_or_else(|| "local".into())),
             subpath: None,
             revert: None,
+            status: opencode_r_schema::session::SessionStatus::Active,
         };
         store.sessions.insert(id.clone(), info.clone());
         store.push_event(&id, SessionEventKind::SessionCreated, serde_json::json!({"title": "New Session"}));
@@ -367,6 +368,54 @@ impl SessionService for InMemorySessionService {
     }
 
     fn interrupt(&self, _session_id: &SessionID) {}
+
+    fn pause(&self, session_id: &SessionID) -> Result<(), ()> {
+        let mut store = self.inner.lock().unwrap();
+        if let Some(s) = store.sessions.get_mut(session_id) {
+            s.status = opencode_r_schema::session::SessionStatus::Paused;
+            s.time.updated = Utc::now();
+            store.push_event(session_id, SessionEventKind::MessageAdded,
+                serde_json::json!({"type": "lifecycle", "action": "pause"}));
+            info!(target: "opencode_r_core::session", session_id = %session_id.0, "session_paused");
+            Ok(())
+        } else { Err(()) }
+    }
+
+    fn resume(&self, session_id: &SessionID) -> Result<(), ()> {
+        let mut store = self.inner.lock().unwrap();
+        if let Some(s) = store.sessions.get_mut(session_id) {
+            s.status = opencode_r_schema::session::SessionStatus::Active;
+            s.time.updated = Utc::now();
+            store.push_event(session_id, SessionEventKind::MessageAdded,
+                serde_json::json!({"type": "lifecycle", "action": "resume"}));
+            info!(target: "opencode_r_core::session", session_id = %session_id.0, "session_resumed");
+            Ok(())
+        } else { Err(()) }
+    }
+
+    fn freeze(&self, session_id: &SessionID) -> Result<(), ()> {
+        let mut store = self.inner.lock().unwrap();
+        if let Some(s) = store.sessions.get_mut(session_id) {
+            s.status = opencode_r_schema::session::SessionStatus::Frozen;
+            s.time.updated = Utc::now();
+            store.push_event(session_id, SessionEventKind::MessageAdded,
+                serde_json::json!({"type": "lifecycle", "action": "freeze"}));
+            info!(target: "opencode_r_core::session", session_id = %session_id.0, "session_frozen");
+            Ok(())
+        } else { Err(()) }
+    }
+
+    fn terminate(&self, session_id: &SessionID) -> Result<(), ()> {
+        let mut store = self.inner.lock().unwrap();
+        if let Some(s) = store.sessions.get_mut(session_id) {
+            s.status = opencode_r_schema::session::SessionStatus::Terminated;
+            s.time.updated = Utc::now();
+            store.push_event(session_id, SessionEventKind::SessionArchived,
+                serde_json::json!({"type": "lifecycle", "action": "terminate"}));
+            info!(target: "opencode_r_core::session", session_id = %session_id.0, "session_terminated");
+            Ok(())
+        } else { Err(()) }
+    }
 
     fn cost_summary(&self) -> opencode_r_schema::session::CostSummary {
         let store = self.inner.lock().unwrap();

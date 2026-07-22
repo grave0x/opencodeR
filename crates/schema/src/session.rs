@@ -21,6 +21,19 @@ pub struct SessionInfo {
     pub location: LocationRef,
     pub subpath: Option<RelativePath>,
     pub revert: Option<RevertState>,
+    pub status: SessionStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum SessionStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "paused")]
+    Paused,
+    #[serde(rename = "frozen")]
+    Frozen,
+    #[serde(rename = "terminated")]
+    Terminated,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

@@ -407,6 +407,50 @@ pub async fn interrupt(
     Json(NoContent)
 }
 
+pub async fn pause(
+    State(state): State<SharedState>,
+    Path(session_id): Path<SessionID>,
+) -> Result<Json<NoContent>, (StatusCode, Json<SessionNotFoundError>)> {
+    let sid = session_id.0.clone();
+    state.session.pause(&session_id).map(|_| Json(NoContent)).map_err(|_| (
+        StatusCode::NOT_FOUND,
+        Json(SessionNotFoundError { session_id: sid, message: format!("Session not found: {}", session_id.0) }),
+    ))
+}
+
+pub async fn resume(
+    State(state): State<SharedState>,
+    Path(session_id): Path<SessionID>,
+) -> Result<Json<NoContent>, (StatusCode, Json<SessionNotFoundError>)> {
+    let sid = session_id.0.clone();
+    state.session.resume(&session_id).map(|_| Json(NoContent)).map_err(|_| (
+        StatusCode::NOT_FOUND,
+        Json(SessionNotFoundError { session_id: sid, message: format!("Session not found: {}", session_id.0) }),
+    ))
+}
+
+pub async fn freeze(
+    State(state): State<SharedState>,
+    Path(session_id): Path<SessionID>,
+) -> Result<Json<NoContent>, (StatusCode, Json<SessionNotFoundError>)> {
+    let sid = session_id.0.clone();
+    state.session.freeze(&session_id).map(|_| Json(NoContent)).map_err(|_| (
+        StatusCode::NOT_FOUND,
+        Json(SessionNotFoundError { session_id: sid, message: format!("Session not found: {}", session_id.0) }),
+    ))
+}
+
+pub async fn terminate(
+    State(state): State<SharedState>,
+    Path(session_id): Path<SessionID>,
+) -> Result<Json<NoContent>, (StatusCode, Json<SessionNotFoundError>)> {
+    let sid = session_id.0.clone();
+    state.session.terminate(&session_id).map(|_| Json(NoContent)).map_err(|_| (
+        StatusCode::NOT_FOUND,
+        Json(SessionNotFoundError { session_id: sid, message: format!("Session not found: {}", session_id.0) }),
+    ))
+}
+
 pub async fn messages(
     State(state): State<SharedState>,
     Path(session_id): Path<SessionID>,

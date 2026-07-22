@@ -34,6 +34,10 @@ pub const SESSION_CONTEXT_PATTERN: &str = "/api/session/:sessionID/context";
 pub const SESSION_HISTORY_PATTERN: &str = "/api/session/:sessionID/history";
 pub const SESSION_EVENTS_PATTERN: &str = "/api/session/:sessionID/event";
 pub const SESSION_INTERRUPT_PATTERN: &str = "/api/session/:sessionID/interrupt";
+pub const SESSION_PAUSE_PATTERN: &str = "/api/session/:sessionID/pause";
+pub const SESSION_RESUME_PATTERN: &str = "/api/session/:sessionID/resume";
+pub const SESSION_FREEZE_PATTERN: &str = "/api/session/:sessionID/freeze";
+pub const SESSION_TERMINATE_PATTERN: &str = "/api/session/:sessionID/terminate";
 pub const SESSION_MESSAGES_PATTERN: &str = "/api/session/:sessionID/message";
 pub const SESSION_MESSAGE_PATTERN: &str = "/api/session/:sessionID/message/:messageID";
 pub fn session_get(id: &str) -> String {
