@@ -31,3 +31,6 @@ tracing-subscriber.workspace = true
 axum.workspace = true
 anyhow.workspace = true
 reqwest = { workspace = true, features = ["json"] }
+ratatui.workspace = true
+crossterm.workspace = true
+chrono.workspace = true

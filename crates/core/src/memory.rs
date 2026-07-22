@@ -19,6 +19,7 @@ use opencode_r_schema::session_message::{MessageContent, MessageRole, SessionMes
 use opencode_r_schema::skill::Skill;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use tracing::info;
 use chrono::Utc;
 
 // ---- InMemoryAgentService ----
@@ -224,6 +225,12 @@ impl SessionService for InMemorySessionService {
         };
         store.sessions.insert(id.clone(), info.clone());
         store.push_event(&id, SessionEventKind::SessionCreated, serde_json::json!({"title": "New Session"}));
+        info!(
+            target: "opencode_r_core::session",
+            session_id = %id.0,
+            agent = ?info.agent.as_ref().map(|a| &a.0),
+            "session_created"
+        );
         info
     }
 
@@ -242,6 +249,7 @@ impl SessionService for InMemorySessionService {
             session.agent = Some(opencode_r_schema::agent::AgentID(agent.into()));
             session.time.updated = Utc::now();
             store.push_event(session_id, SessionEventKind::MessageAdded, serde_json::json!({"type": "agent_switch", "agent": agent}));
+            info!(target: "opencode_r_core::session", session_id = %session_id.0, agent = %agent, "agent_switched");
             Ok(())
         } else {
             Err(())
@@ -254,6 +262,7 @@ impl SessionService for InMemorySessionService {
             session.model = Some(ModelRef(model.into()));
             session.time.updated = Utc::now();
             store.push_event(session_id, SessionEventKind::MessageAdded, serde_json::json!({"type": "model_switch", "model": model}));
+            info!(target: "opencode_r_core::session", session_id = %session_id.0, model = %model, "model_switched");
             Ok(())
         } else {
             Err(())
@@ -276,6 +285,7 @@ impl SessionService for InMemorySessionService {
             created_at: now,
         });
         store.push_event(session_id, SessionEventKind::MessageAdded, serde_json::json!({"message_id": msg_id.0, "role": "user"}));
+        info!(target: "opencode_r_core::session", session_id = %session_id.0, msg_id = %msg_id.0, "message_admitted");
         Ok(msg_id.0)
     }
 

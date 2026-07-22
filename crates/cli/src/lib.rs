@@ -1,7 +1,11 @@
+pub mod tui;
+
 use std::net::SocketAddr;
 use std::sync::Arc;
 use clap::{Parser, Subcommand};
-use tracing_subscriber::EnvFilter;
+use crate::tui::{LogBuffer, TuiLogLayer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use std::sync::Mutex;
 
 #[derive(Parser)]
 #[command(name = "opencodeR", version, about = "OpenCode AI coding agent (Rust)")]
@@ -29,22 +33,83 @@ pub enum Commands {
         session: Option<String>,
         prompt: Vec<String>,
     },
+    /// Launch the TUI (terminal interface)
+    Tui,
 }
 
 pub async fn main_entry(args: Vec<String>) -> anyhow::Result<()> {
-    // Only init tracing once
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env()
-            .add_directive("opencode_r_server=info".parse().unwrap())
-            .add_directive("opencode_r_client=info".parse().unwrap()))
-        .try_init();
-
     let cli = Cli::parse_from(args);
 
     match cli.command.unwrap_or(Commands::Server) {
-        Commands::Server => run_server(cli.port, cli.password).await,
-        Commands::Client { session, prompt } => run_client(cli.base_url, session, prompt).await,
+        Commands::Server => {
+            init_tracing(false, None);
+            run_server(cli.port, cli.password).await
+        }
+        Commands::Client { session, prompt } => {
+            init_tracing(false, None);
+            run_client(cli.base_url, session, prompt).await
+        }
+        Commands::Tui => {
+            let log_buffer = LogBuffer::new();
+            init_tracing(true, Some(log_buffer.clone()));
+            run_tui_with_server(cli.port, cli.password, log_buffer).await
+        }
     }
+}
+
+fn init_tracing(tui_mode: bool, log_buffer: Option<Arc<Mutex<LogBuffer>>>) {
+    let filter = EnvFilter::from_default_env()
+        .add_directive("opencode_r_server=info".parse().unwrap())
+        .add_directive("opencode_r_core=info".parse().unwrap())
+        .add_directive("opencode_r_client=info".parse().unwrap())
+        .add_directive("tower_http=warn".parse().unwrap());
+
+    if tui_mode {
+        let layer = TuiLogLayer {
+            buffer: log_buffer.unwrap(),
+        };
+        let _ = tracing_subscriber::registry()
+            .with(filter)
+            .with(layer)
+            .try_init();
+    } else {
+        let _ = tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_target(true)
+            .with_file(true)
+            .with_line_number(true)
+            .try_init();
+    }
+}
+
+async fn run_tui_with_server(
+    port: u16,
+    password: Option<String>,
+    log_buffer: Arc<Mutex<LogBuffer>>,
+) -> anyhow::Result<()> {
+    tracing::info!("Starting TUI mode — server on port {}", port);
+
+    if let Some(pwd) = password {
+        opencode_r_server::middleware::auth::set_password(pwd);
+    }
+
+    let state = Arc::new(opencode_r_server::state::AppState::new());
+    let app = opencode_r_server::build_router(state);
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+
+    // Run the server in a background task
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    tracing::info!("OpenCodeR server started. Launching TUI...");
+
+    // Run the TUI (blocks until user quits)
+    crate::tui::run_tui(port, None, log_buffer).await?;
+
+    Ok(())
 }
 
 async fn run_server(port: u16, password: Option<String>) -> anyhow::Result<()> {

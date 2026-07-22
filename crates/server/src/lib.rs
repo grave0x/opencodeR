@@ -123,6 +123,7 @@ pub fn build_router(state: SharedState) -> Router {
         .route(route::PROJECT_COPY_REFRESH_PATTERN, post(handler::project_copy::refresh))
         // Middleware
         .layer(axum_mw::from_fn(middleware::auth::auth_middleware))
+        .layer(axum_mw::from_fn(middleware::access_log::access_log_middleware))
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
         .with_state(state)
