@@ -40,6 +40,7 @@ pub const SESSION_FREEZE_PATTERN: &str = "/api/session/:sessionID/freeze";
 pub const SESSION_TERMINATE_PATTERN: &str = "/api/session/:sessionID/terminate";
 pub const SESSION_MESSAGES_PATTERN: &str = "/api/session/:sessionID/message";
 pub const SESSION_MESSAGE_PATTERN: &str = "/api/session/:sessionID/message/:messageID";
+pub const SESSION_TRACE_PATTERN: &str = "/api/session/:sessionID/trace";
 pub fn session_get(id: &str) -> String {
     format!("/api/session/{id}")
 }

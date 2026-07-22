@@ -509,3 +509,30 @@ pub async fn cost_summary(
     let summary = state.session.cost_summary();
     Json(DataResponse { data: summary })
 }
+
+pub async fn trace(
+    State(state): State<SharedState>,
+    Path(session_id): Path<SessionID>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<SessionNotFoundError>)> {
+    let sid = session_id.0.clone();
+    let session = state.session.get(&session_id).ok_or_else(|| (
+        StatusCode::NOT_FOUND,
+        Json(SessionNotFoundError { session_id: sid.clone(), message: format!("Session not found: {}", sid) }),
+    ))?;
+    let messages = state.session.messages(opencode_r_core::SessionMessagesQuery {
+        session_id: session_id.clone(),
+        limit: None,
+        order: Some("asc".into()),
+        cursor: None,
+    }).unwrap_or_default();
+    let events = state.session.events(&session_id, None);
+
+    let trace = serde_json::json!({
+        "session": session,
+        "messages": messages,
+        "events": events,
+        "message_count": messages.len(),
+        "event_count": events.len(),
+    });
+    Ok(Json(trace))
+}

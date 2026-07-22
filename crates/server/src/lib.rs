@@ -47,6 +47,7 @@ pub fn build_router(state: SharedState) -> Router {
         .route(route::SESSION_TERMINATE_PATTERN, post(handler::session::terminate))
         .route(route::SESSION_MESSAGES_PATTERN, get(handler::session::messages))
         .route(route::SESSION_MESSAGE_PATTERN, get(handler::session::message))
+        .route(route::SESSION_TRACE_PATTERN, get(handler::session::trace))
         // Model
         .route(route::MODEL_LIST_PATTERN, get(handler::model::list))
         // Cost
